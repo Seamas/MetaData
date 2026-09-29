@@ -1,0 +1,153 @@
+<div class="metadata-page">
+  <!-- 左：连接 + 表清单 -->
+  <div class="side-card">
+    <div class="side-title">元数据浏览</div>
+    <nz-select
+      class="conn-select"
+      [(ngModel)]="selectedConnectionId"
+      (ngModelChange)="onConnectionChange()"
+      nzPlaceHolder="选择数据库连接">
+      @for (c of connections; track c.id) {
+        <nz-option [nzValue]="c.id" [nzLabel]="c.name"></nz-option>
+      }
+    </nz-select>
+
+    <nz-spin [nzSpinning]="tablesLoading">
+      <ul class="table-list">
+        @for (t of tables; track t.id) {
+          <li
+            class="table-item"
+            [class.active]="selectedTable?.id === t.id"
+            (click)="selectTable(t)">
+            <div class="table-item-main">
+              <span nz-icon nzType="table" class="table-icon"></span>
+              <span class="table-name">{{ tableTitle(t) }}</span>
+            </div>
+            <div class="table-item-meta">
+              <nz-tag [nzColor]="t.isPublished ? 'green' : 'default'">
+                {{ t.isPublished ? '已发布' : '未发布' }}
+              </nz-tag>
+              <span class="field-count">{{ t.fieldCount }} 字段</span>
+            </div>
+          </li>
+        } @empty {
+          <nz-empty nzNotFoundContent="该连接下暂无表，请先在连接管理中读取表结构"></nz-empty>
+        }
+      </ul>
+    </nz-spin>
+  </div>
+
+  <!-- 右：表属性 + 字段配置 -->
+  <div class="main-card">
+    @if (!selectedTable) {
+      <nz-empty nzNotFoundContent="请选择左侧的表" class="empty-tip"></nz-empty>
+    } @else {
+      <div class="panel">
+        <div class="panel-header">
+          <h2>{{ tableTitle(selectedTable) }}</h2>
+          <div>
+            <button nz-button nzDanger nz-popconfirm
+                    nzPopconfirmTitle="确认删除该表元数据？"
+                    (nzOnConfirm)="deleteTable()">删除表</button>
+          </div>
+        </div>
+
+        <div class="prop-grid">
+          <div class="prop-item">
+            <label>中文名</label>
+            <input nz-input [(ngModel)]="tableForm.displayName" placeholder="表的业务显示名称" />
+          </div>
+          <div class="prop-item">
+            <label>默认排序字段</label>
+            <nz-select [(ngModel)]="tableForm.defaultSortField" nzAllowClear
+                       nzPlaceHolder="未设置时使用主键">
+              @for (f of fields; track f.id) {
+                <nz-option [nzValue]="f.fieldName"
+                           [nzLabel]="(f.displayName || f.alias) + ' (' + f.fieldName + ')'"></nz-option>
+              }
+            </nz-select>
+          </div>
+          <div class="prop-item prop-item-inline">
+            <label>对业务用户发布</label>
+            <nz-switch [(ngModel)]="tableForm.isPublished"></nz-switch>
+          </div>
+          <div class="prop-item">
+            <label>备注</label>
+            <input nz-input [(ngModel)]="tableForm.remark" />
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button nz-button nzType="primary" [nzLoading]="savingTable" (click)="saveTable()">
+            保存表属性
+          </button>
+        </div>
+      </div>
+
+      <nz-divider></nz-divider>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>字段配置（拖拽 <span nz-icon nzType="drag"></span> 调整顺序）</h3>
+          <button nz-button nzType="primary" [nzLoading]="savingFields"
+                  [disabled]="hasAliasIssue" (click)="saveFields()">保存字段配置</button>
+        </div>
+
+        <nz-table [nzData]="fields" [nzLoading]="fieldsLoading" nzBordered [nzShowPagination]="false"
+                  nzSize="small" [nzPageSize]="fields.length"
+                  [nzScroll]="{ y: 'calc(100vh - 380px)' }">
+          <thead>
+            <tr>
+              <th style="width: 46px"></th>
+              <th style="width: 56px">#</th>
+              <th style="width: 170px">物理字段名</th>
+              <th style="width: 200px">别名（对前端）</th>
+              <th style="width: 170px">显示名称</th>
+              <th style="width: 120px">数据分类</th>
+              <th style="width: 130px">物理类型</th>
+              <th style="width: 70px">主键</th>
+              <th style="width: 70px">显示</th>
+            </tr>
+          </thead>
+          <tbody cdkDropList (cdkDropListDropped)="drop($event)" class="field-rows">
+            @for (f of fields; track f.id; let i = $index) {
+              <tr cdkDrag class="field-row">
+                <td class="drag-handle"><span nz-icon nzType="drag" cdkDragHandle></span></td>
+                <td>{{ i + 1 }}</td>
+                <td class="mono">{{ f.fieldName }}</td>
+                <td>
+                  <input nz-input nzSize="small" [(ngModel)]="f.alias"
+                         [class.input-error]="aliasConflict(f)" />
+                  @if (aliasConflict(f)) {
+                    <div class="error-text">别名重复或为空</div>
+                  }
+                </td>
+                <td><input nz-input nzSize="small" [(ngModel)]="f.displayName" /></td>
+                <td>
+                  <nz-select nzSize="small" [(ngModel)]="f.dataCategory">
+                    @for (c of categoryOptions; track c.value) {
+                      <nz-option [nzValue]="c.value" [nzLabel]="c.label"></nz-option>
+                    }
+                  </nz-select>
+                </td>
+                <td class="sub-text">
+                  {{ f.nativeDataType }}
+                  @if (f.isNullable) {
+                    <div>NULL</div>
+                  }
+                </td>
+                <td class="center">
+                  @if (f.isPrimaryKey) {
+                    <span nz-icon nzType="key"></span>
+                  }
+                </td>
+                <td class="center">
+                  <nz-switch nzSize="small" [(ngModel)]="f.isVisible"></nz-switch>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MetaData.Core/MetaData.Core.csproj" />
+    <Project Path="src/MetaData.Web/MetaData.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MetaData.Core.Tests/MetaData.Core.Tests.csproj" />
+  </Folder>
+</Solution>

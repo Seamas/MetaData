@@ -1,0 +1,172 @@
+.metadata-page {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.side-card {
+  width: 300px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.side-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.conn-select {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.table-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.table-item {
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &.active {
+    background: #e6f7ff;
+    border-color: #91d5ff;
+  }
+}
+
+.table-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .table-icon {
+    color: #1890ff;
+  }
+
+  .table-name {
+    font-weight: 500;
+    word-break: break-all;
+  }
+}
+
+.table-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-left: 21px;
+
+  .field-count {
+    color: #999;
+    font-size: 12px;
+  }
+}
+
+.main-card {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 20px 24px;
+}
+
+.empty-tip {
+  padding-top: 120px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h2,
+  h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+
+  h3 {
+    font-size: 15px;
+  }
+}
+
+.prop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+}
+
+.prop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    color: #666;
+    font-size: 13px;
+  }
+}
+
+.prop-item-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding-top: 24px;
+}
+
+.panel-actions {
+  margin-top: 16px;
+}
+
+.field-rows {
+  min-height: 60px;
+}
+
+.field-row {
+  .drag-handle {
+    cursor: move;
+    color: #999;
+    text-align: center;
+  }
+
+  &.cdk-drag-preview td {
+    background: #fff;
+  }
+}
+
+.mono {
+  font-family: Consolas, Menlo, monospace;
+  word-break: break-all;
+}
+
+.sub-text {
+  color: #999;
+  font-size: 12px;
+}
+
+.center {
+  text-align: center;
+}
+
+.input-error {
+  border-color: #ff4d4f !important;
+}
+
+.error-text {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 2px;
+}

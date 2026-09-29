@@ -1,0 +1,132 @@
+.page-card {
+  background: #fff;
+  padding: 20px 24px;
+  border-radius: 6px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+}
+
+.top-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.table-select {
+  width: 340px;
+}
+
+.empty-tip {
+  padding: 100px 0;
+}
+
+.filter-panel {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.f-field {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.f-op {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.f-value {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.f-between {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 460px;
+
+  input,
+  nz-input-number {
+    flex: 1;
+  }
+}
+
+.between-sep {
+  color: #999;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pref-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pref-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-bottom: 1px dashed #f0f0f0;
+
+  .pref-handle {
+    cursor: move;
+    color: #999;
+    font-size: 16px;
+  }
+}
+
+.pref-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pref-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pref-sub {
+  margin-top: 6px;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-size: 13px;
+  }
+}
+
+.pref-footer {
+  margin-top: 16px;
+  text-align: right;
+}

@@ -1,0 +1,161 @@
+<div class="page-card">
+  <div class="top-bar">
+    <h2>业务数据查询</h2>
+    <div class="top-controls">
+      <nz-select class="table-select" [(ngModel)]="selectedTableId" (ngModelChange)="onTableChange()"
+                 nzPlaceHolder="选择已发布的表">
+        @for (t of publishedTables; track t.tableId) {
+          <nz-option [nzValue]="t.tableId"
+                     [nzLabel]="t.connectionName + ' / ' + (t.displayName || t.tableName)"></nz-option>
+        }
+      </nz-select>
+      <button nz-button [disabled]="!selectedTableId" (click)="openDrawer()">
+        <span nz-icon nzType="setting"></span>列设置
+      </button>
+    </div>
+  </div>
+
+  @if (!selectedTable) {
+    <nz-empty nzNotFoundContent="请选择一张管理员已发布的表" class="empty-tip"></nz-empty>
+  } @else {
+    <!-- 条件查询区 -->
+    <div class="filter-panel">
+      @for (row of filters; track $index) {
+        <div class="filter-row">
+          <nz-select class="f-field" [(ngModel)]="row.field" (ngModelChange)="onFilterFieldChange(row)"
+                     nzPlaceHolder="选择字段">
+            @for (f of visibleFields; track f.id) {
+              <nz-option [nzValue]="f" [nzLabel]="colTitle(f)"></nz-option>
+            }
+          </nz-select>
+          <nz-select class="f-op" [(ngModel)]="row.operator" nzPlaceHolder="条件">
+            @for (op of operatorsOf(row.field); track op.operator) {
+              <nz-option [nzValue]="op.operator" [nzLabel]="op.label"></nz-option>
+            }
+          </nz-select>
+
+          @if (row.field && row.operator && !isNullOnly(row.operator)) {
+            @if (row.field.dataCategory === 'DateTime' && isBetween(row.operator)) {
+              <nz-range-picker class="f-value" [(ngModel)]="row.value"></nz-range-picker>
+            } @else if (row.field.dataCategory === 'DateTime') {
+              <nz-date-picker class="f-value" [(ngModel)]="row.value"></nz-date-picker>
+            } @else if (row.field.dataCategory === 'Boolean') {
+              <nz-select class="f-value" [(ngModel)]="row.value" nzPlaceHolder="值">
+                <nz-option [nzValue]="true" nzLabel="是（true）"></nz-option>
+                <nz-option [nzValue]="false" nzLabel="否（false）"></nz-option>
+              </nz-select>
+            } @else if (isBetween(row.operator)) {
+              <div class="f-between">
+                @if (row.field.dataCategory === 'Number') {
+                  <nz-input-number [(ngModel)]="row.value" nzPlaceHolder="最小值"></nz-input-number>
+                  <span class="between-sep">~</span>
+                  <nz-input-number [(ngModel)]="row.value2" nzPlaceHolder="最大值"></nz-input-number>
+                } @else {
+                  <input nz-input [(ngModel)]="row.value" placeholder="起始值" />
+                  <span class="between-sep">~</span>
+                  <input nz-input [(ngModel)]="row.value2" placeholder="结束值" />
+                }
+              </div>
+            } @else if (row.field.dataCategory === 'Number') {
+              <nz-input-number class="f-value" [(ngModel)]="row.value"></nz-input-number>
+            } @else {
+              <input class="f-value" nz-input [(ngModel)]="row.value" placeholder="查询值" />
+            }
+          }
+
+          <button nz-button nzType="text" nzDanger (click)="removeFilter(row)">
+            <span nz-icon nzType="delete"></span>
+          </button>
+        </div>
+      }
+      <div class="filter-actions">
+        <button nz-button nzType="dashed" (click)="addFilter()">
+          <span nz-icon nzType="plus"></span>添加条件
+        </button>
+        @if (filters.length > 0) {
+          <button nz-button (click)="resetFilters()">重置</button>
+        }
+        <button nz-button nzType="primary" (click)="page = 1; query()">
+          <span nz-icon nzType="search"></span>查询
+        </button>
+      </div>
+    </div>
+
+    <!-- 结果表 -->
+    <nz-table
+      [nzData]="rows"
+      [nzLoading]="loading"
+      [nzFrontPagination]="false"
+      [nzPageIndex]="page"
+      [nzPageSize]="pageSize"
+      [nzTotal]="total"
+      [nzShowTotal]="totalTpl"
+      (nzPageIndexChange)="onPageChange($event)"
+      (nzPageSizeChange)="onPageSizeChange($event)"
+      (nzQueryParams)="onSortChange($event.sort)"
+      nzBordered
+      nzSize="middle">
+      <thead>
+        <tr>
+          @for (f of visibleFields; track f.id) {
+            <th
+              [nzSortFn]="true"
+              [nzSortOrder]="sortKey === f.alias ? sortDir : null"
+              [nzColumnKey]="f.alias"
+              [style.width.px]="widthOf(f)">
+              {{ colTitle(f) }}
+              @if (f.isPrimaryKey) {
+                <span nz-icon nzType="key"></span>
+              }
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track $index) {
+          <tr>
+            @for (f of visibleFields; track f.id) {
+              <td>{{ cellValue(row, f) }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+    <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+  }
+
+  <!-- 列设置抽屉（顺序/显隐/宽度，仅当前用户） -->
+  <nz-drawer [(nzVisible)]="drawerVisible" nzTitle="列显示设置（仅对当前用户生效）"
+             nzPlacement="right" [nzWidth]="420">
+    <ng-container *nzDrawerContent>
+      <ul cdkDropList (cdkDropListDropped)="dropPref($event)" class="pref-list">
+        @for (item of drawerFields; track item.field.id) {
+          <li cdkDrag class="pref-item">
+            <span nz-icon nzType="drag" cdkDragHandle class="pref-handle"></span>
+            <div class="pref-main">
+              <div class="pref-title">
+                <strong>{{ colTitle(item.field) }}</strong>
+                <nz-tag>{{ item.field.alias }}</nz-tag>
+                @if (item.field.isPrimaryKey) {
+                  <span nz-icon nzType="key"></span>
+                }
+              </div>
+              <div class="pref-sub">
+                <label>宽度
+                  <nz-input-number [(ngModel)]="item.width" [nzMin]="60" [nzMax]="1000"
+                                   [nzPlaceHolder]="'自动'" nzSize="small"></nz-input-number>
+                </label>
+              </div>
+            </div>
+            <nz-switch [(ngModel)]="item.isVisible"></nz-switch>
+          </li>
+        }
+      </ul>
+      <div class="pref-footer">
+        <button nz-button nzType="primary" [nzLoading]="savingPrefs" (click)="savePreferences()">
+          保存设置
+        </button>
+      </div>
+    </ng-container>
+  </nz-drawer>
+</div>

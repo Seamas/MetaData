@@ -1,0 +1,324 @@
+<div class="page-card">
+  <div class="page-header">
+    <h2>数据库连接</h2>
+    <button nz-button nzType="primary" (click)="openCreate()">
+      <span nz-icon nzType="plus"></span>新建连接
+    </button>
+  </div>
+
+  <nz-table [nzData]="connections" [nzLoading]="loading" nzBordered [nzPageSize]="20" nzSize="middle">
+    <thead>
+      <tr>
+        <th style="width: 60px">序号</th>
+        <th>名称</th>
+        <th style="width: 110px">数据库类型</th>
+        <th>主机 / 库</th>
+        <th>服务端版本</th>
+        <th style="width: 90px">启用</th>
+        <th style="width: 330px">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of connections; track item.id; let i = $index) {
+        <tr>
+          <td>{{ i + 1 }}</td>
+          <td>
+            <strong>{{ item.name }}</strong>
+            @if (item.remark) {
+              <div class="sub-text">{{ item.remark }}</div>
+            }
+          </td>
+          <td><nz-tag nzColor="blue">{{ dbLabel(item.databaseType) }}</nz-tag></td>
+          <td>
+            @if (item.inputMode === 'Advanced') {
+              <span class="sub-text">高级连接串</span>
+            } @else {
+              {{ item.host }}@if (item.port) {<span class="sub-text">:{{ item.port }}</span>}
+              @if (item.databaseName) {
+                <div class="sub-text">{{ item.databaseName }}</div>
+              }
+            }
+          </td>
+          <td class="sub-text">{{ item.serverVersion || '—' }}</td>
+          <td>
+            <nz-tag [nzColor]="item.isEnabled ? 'green' : 'default'">
+              {{ item.isEnabled ? '启用' : '停用' }}
+            </nz-tag>
+          </td>
+          <td>
+            <a (click)="openEdit(item)">编辑</a>
+            <nz-divider nzType="vertical"></nz-divider>
+            <a (click)="openImport(item)">读取表结构</a>
+            <nz-divider nzType="vertical"></nz-divider>
+            <a nz-popconfirm nzPopconfirmTitle="确认删除该连接？其下元数据也会被清理"
+               (nzOnConfirm)="delete(item)" class="danger-link">删除</a>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<!-- 编辑 / 新建 模态框 -->
+<nz-modal
+  [(nzVisible)]="modalVisible"
+  [nzTitle]="editing.id ? '编辑数据库连接' : '新建数据库连接'"
+  [nzWidth]="760"
+  [nzOkText]="null"
+  [nzCancelText]="'关闭'"
+  [nzOkLoading]="modalSaving">
+  <ng-container *nzModalContent>
+    <nz-radio-group [(ngModel)]="editing.inputMode" class="mode-switch" (ngModelChange)="testResult = null">
+      <label nz-radio-button nzValue="Simple">结构化录入</label>
+      <label nz-radio-button nzValue="Advanced">高级连接串</label>
+    </nz-radio-group>
+
+    <nz-row [nzGutter]="16">
+      <nz-col [nzSpan]="12">
+        <nz-form-item>
+          <nz-form-label nzRequired>连接名称</nz-form-label>
+          <nz-form-control>
+            <input nz-input [(ngModel)]="editing.name" placeholder="便于识别的名称" />
+          </nz-form-control>
+        </nz-form-item>
+      </nz-col>
+      <nz-col [nzSpan]="12">
+        <nz-form-item>
+          <nz-form-label nzRequired>数据库类型</nz-form-label>
+          <nz-form-control>
+            <nz-select
+              [(ngModel)]="editing.databaseType"
+              (ngModelChange)="onTypeChange($event)"
+              [nzDisabled]="editing.id > 0">
+              @for (o of dbTypeOptions; track o.value) {
+                <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+      </nz-col>
+    </nz-row>
+
+    @if (editing.inputMode === 'Simple') {
+      <nz-row [nzGutter]="16">
+        <nz-col [nzSpan]="14">
+          <nz-form-item>
+            <nz-form-label nzRequired>主机</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="editing.host" placeholder="如 127.0.0.1" />
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+        <nz-col [nzSpan]="10">
+          <nz-form-item>
+            <nz-form-label>端口</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="editing.port" [nzMin]="1" [nzMax]="65535" style="width:100%"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+      </nz-row>
+
+      <nz-row [nzGutter]="16">
+        <nz-col [nzSpan]="isOracle ? 12 : 24">
+          <nz-form-item>
+            <nz-form-label nzRequired>{{ dbDatabaseLabel(editing.databaseType) }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="editing.databaseName" />
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+        @if (isOracle) {
+          <nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>Oracle 目标</nz-form-label>
+              <nz-form-control>
+                <nz-radio-group [(ngModel)]="editing.oracleTargetType">
+                  <label nz-radio nzValue="ServiceName">服务名 (SERVICE_NAME)</label>
+                  <label nz-radio nzValue="Sid">SID</label>
+                </nz-radio-group>
+              </nz-form-control>
+            </nz-form-item>
+          </nz-col>
+        }
+      </nz-row>
+
+      @if (isSqlServer) {
+        <nz-row [nzGutter]="16">
+          <nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>实例名</nz-form-label>
+              <nz-form-control>
+                <input nz-input [(ngModel)]="editing.instanceName" placeholder="可选，如 SQLEXPRESS" />
+              </nz-form-control>
+            </nz-form-item>
+          </nz-col>
+          <nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>认证方式</nz-form-label>
+              <nz-form-control>
+                <nz-radio-group [(ngModel)]="editing.authMode">
+                  <label nz-radio nzValue="Basic">账号密码</label>
+                  <label nz-radio nzValue="Integrated">集成认证 (Windows)</label>
+                </nz-radio-group>
+              </nz-form-control>
+            </nz-form-item>
+          </nz-col>
+        </nz-row>
+      }
+
+      @if (editing.authMode === 'Basic' || !isSqlServer) {
+        <nz-row [nzGutter]="16">
+          <nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>用户名</nz-form-label>
+              <nz-form-control>
+                <input nz-input [(ngModel)]="editing.userName" autocomplete="off" />
+              </nz-form-control>
+            </nz-form-item>
+          </nz-col>
+          <nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>密码</nz-form-label>
+              <nz-form-control>
+                <input nz-input type="password" [(ngModel)]="editing.password" autocomplete="new-password"
+                       [placeholder]="editing.hasPassword ? '已保存，留空表示不修改' : '请输入密码'" />
+              </nz-form-control>
+            </nz-form-item>
+          </nz-col>
+        </nz-row>
+      }
+
+      <nz-row [nzGutter]="16">
+        <nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label>默认 Schema</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="editing.defaultSchema"
+                     placeholder="可选，如 dbo / 大写用户名" />
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+        <nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label>附加连接参数</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="editing.extraOptions" placeholder="可选，如 charset=utf8mb4" />
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+      </nz-row>
+    } @else {
+      <nz-form-item>
+        <nz-form-label nzRequired>完整连接串</nz-form-label>
+        <nz-form-control>
+          <textarea nz-input [(ngModel)]="editing.advancedConnectionString" rows="5"
+                    [placeholder]="editing.hasAdvancedConnectionString
+                      ? '已保存连接串，留空表示不修改；如需更换请完整输入'
+                      : 'Provider 原生 ADO.NET 连接串'"></textarea>
+        </nz-form-control>
+      </nz-form-item>
+      <nz-alert nzType="info" nzShowIcon
+                nzMessage="高级模式直接使用驱动原生连接串（含账号密码），由方言负责加解密保存，不做结构化校验。"
+                class="mode-tip"></nz-alert>
+    }
+
+    <nz-row [nzGutter]="16">
+      <nz-col [nzSpan]="12">
+        <nz-form-item>
+          <nz-form-label>备注</nz-form-label>
+          <nz-form-control>
+            <input nz-input [(ngModel)]="editing.remark" />
+          </nz-form-control>
+        </nz-form-item>
+      </nz-col>
+      <nz-col [nzSpan]="12">
+        <nz-form-item>
+          <nz-form-label>启用</nz-form-label>
+          <nz-form-control>
+            <nz-switch [(ngModel)]="editing.isEnabled"></nz-switch>
+          </nz-form-control>
+        </nz-form-item>
+      </nz-col>
+    </nz-row>
+
+    @if (testResult; as tr) {
+      <nz-alert [nzType]="tr.success ? 'success' : 'error'" nzShowIcon class="mode-tip"
+                [nzMessage]="tr.success
+                  ? ('连接成功：' + (tr.serverVersion || ''))
+                  : ('连接失败：' + (tr.message || ''))"></nz-alert>
+    }
+  </ng-container>
+
+  <div *nzModalFooter>
+    <button nz-button (click)="modalVisible = false">关闭</button>
+    <button nz-button [nzLoading]="modalTesting" (click)="test()">测试连接</button>
+    <button nz-button nzType="primary" [nzLoading]="modalSaving" (click)="save()">保存</button>
+  </div>
+</nz-modal>
+
+<!-- 读取业务库表结构 -->
+<nz-drawer
+  [(nzVisible)]="drawerVisible"
+  nzTitle="读取表结构并导入元数据"
+  nzPlacement="right"
+  [nzWidth]="560">
+  <ng-container *nzDrawerContent>
+    @if (drawerConnection; as conn) {
+      <div class="drawer-toolbar">
+        <nz-input-group [nzAddOnBefore]="'Schema'" style="flex:1">
+          <input nz-input [(ngModel)]="schemaFilter"
+                 [placeholder]="conn.defaultSchema || '留空使用默认 Schema'"
+                 (keyup.enter)="fetchSourceTables()" />
+        </nz-input-group>
+        <button nz-button nzType="default" (click)="fetchSourceTables()" [nzLoading]="sourceLoading">
+          刷新
+        </button>
+      </div>
+      <nz-input-group style="margin: 12px 0" [nzPrefix]="prefixIcon">
+        <input nz-input [(ngModel)]="sourceKeyword" placeholder="按表名或注释过滤" />
+      </nz-input-group>
+      <ng-template #prefixIcon><span nz-icon nzType="search"></span></ng-template>
+
+      @if (sourceError) {
+        <nz-alert nzType="error" nzShowIcon class="mode-tip"
+                  [nzMessage]="sourceError" nzCloseable (nzOnClose)="sourceError = ''"></nz-alert>
+      }
+
+      <div class="select-all-bar">
+        <label nz-checkbox
+               [ngModel]="allCheckedValue()"
+               [nzIndeterminate]="indeterminateValue()"
+               (ngModelChange)="onAllChecked($event)">全选（当前过滤结果）</label>
+        <span class="sub-text">已选 {{ checkedTables.size }} 张表</span>
+      </div>
+
+      <nz-spin [nzSpinning]="sourceLoading">
+        <ul class="source-list">
+          @for (t of filteredSources; track tableKey(t)) {
+            <li>
+              <label nz-checkbox [ngModel]="isChecked(t)" (ngModelChange)="onItemChecked(t, $event)">
+                <strong>{{ t.tableName }}</strong>
+                @if (t.schema) {
+                  <nz-tag class="schema-tag">{{ t.schema }}</nz-tag>
+                }
+                @if (t.comment) {
+                  <div class="sub-text">{{ t.comment }}</div>
+                }
+              </label>
+            </li>
+          } @empty {
+            <nz-empty nzNotFoundContent="未读取到表，请确认连接、账号权限与 Schema"></nz-empty>
+          }
+        </ul>
+      </nz-spin>
+
+      <div class="drawer-footer">
+        <button nz-button nzType="primary" [nzLoading]="importing"
+                (click)="importSelected()">
+          导入选中表（{{ checkedTables.size }}）
+        </button>
+      </div>
+    }
+  </ng-container>
+</nz-drawer>
