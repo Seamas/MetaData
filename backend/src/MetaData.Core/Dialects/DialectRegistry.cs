@@ -4,12 +4,6 @@ using MetaData.Core.Infrastructure;
 
 namespace MetaData.Core.Dialects;
 
-/// <summary>按数据库类型解析方言。</summary>
-public interface IDialectRegistry
-{
-    IDatabaseDialect Resolve(DatabaseType databaseType);
-}
-
 /// <summary>基于已注册方言集合的默认注册表。</summary>
 public class DialectRegistry : IDialectRegistry
 {

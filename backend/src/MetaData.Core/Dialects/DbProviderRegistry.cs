@@ -6,9 +6,6 @@ using MetaData.Core.Infrastructure;
 
 namespace MetaData.Core.Dialects;
 
-/// <summary>宿主注册的一个具体驱动（注册项）。</summary>
-public sealed record DatabaseProviderRegistration(DatabaseType DatabaseType, DbProviderFactory Factory);
-
 /// <summary>ADO.NET DbProviderFactory 注册表（宿主启动时注册具体驱动工厂）。</summary>
 public class DbProviderRegistry : IDbProviderRegistry
 {

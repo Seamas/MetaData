@@ -49,13 +49,3 @@ public class ConnectionDto
     /// <summary>是否已保存高级连接串（出参）。</summary>
     public bool HasAdvancedConnectionString { get; set; }
 }
-
-/// <summary>测试连接结果。</summary>
-public class ConnectionTestResultDto
-{
-    public bool Success { get; set; }
-
-    public string? ServerVersion { get; set; }
-
-    public string? Message { get; set; }
-}

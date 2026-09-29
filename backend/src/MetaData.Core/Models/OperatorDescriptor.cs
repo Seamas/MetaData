@@ -15,13 +15,3 @@ public class OperatorDescriptor
     /// <summary>是否需要第二个值（区间）。</summary>
     public bool NeedsValue2 { get; set; }
 }
-
-/// <summary>数据分类支持的操作符集合。</summary>
-public class CategoryOperators
-{
-    public DataCategory DataCategory { get; set; }
-
-    public string Label { get; set; } = string.Empty;
-
-    public List<OperatorDescriptor> Operators { get; set; } = [];
-}

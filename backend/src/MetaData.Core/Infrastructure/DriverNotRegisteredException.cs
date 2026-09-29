@@ -2,14 +2,6 @@ using MetaData.Core.Enums;
 
 namespace MetaData.Core.Infrastructure;
 
-/// <summary>业务异常：消息可直接展示给前端。</summary>
-public class BusinessException : Exception
-{
-    public BusinessException(string message) : base(message)
-    {
-    }
-}
-
 /// <summary>业务库 ADO.NET 驱动未在宿主注册。</summary>
 public class DriverNotRegisteredException : BusinessException
 {
