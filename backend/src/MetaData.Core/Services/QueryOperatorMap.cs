@@ -1,4 +1,4 @@
-using MetaData.Core.Enums;
+using MetaData.Abstractions.Enums;
 using MetaData.Core.Models;
 
 namespace MetaData.Core.Services;

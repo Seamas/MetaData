@@ -1,11 +1,11 @@
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
+using MetaData.Abstractions.Schema;
 using MetaData.Core.Data;
-using MetaData.Core.Dialects;
+using MetaData.Providers.Dialects;
 using MetaData.Core.Entities;
-using MetaData.Core.Enums;
-using MetaData.Core.Infrastructure;
+using MetaData.Abstractions.Enums;
+using MetaData.Abstractions.Exceptions;
 using MetaData.Core.Models;
-using MetaData.Core.SchemaInspection;
 using Microsoft.EntityFrameworkCore;
 
 namespace MetaData.Core.Services;
@@ -16,13 +16,13 @@ public class MetadataImportService
     private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly IDialectRegistry _dialects;
-    private readonly SchemaInspectorRegistry _inspectors;
+    private readonly ISchemaInspectorRegistry _inspectors;
 
     public MetadataImportService(
         IDbContextFactory<MetaDataDbContext> contextFactory,
         IDbConnectionFactory connectionFactory,
         IDialectRegistry dialects,
-        SchemaInspectorRegistry inspectors)
+        ISchemaInspectorRegistry inspectors)
     {
         _contextFactory = contextFactory;
         _connectionFactory = connectionFactory;
@@ -34,13 +34,13 @@ public class MetadataImportService
     {
         if (request.Tables.Count == 0)
         {
-            throw new BusinessException("请至少选择一张表。");
+            throw new MetaDataException("请至少选择一张表。");
         }
 
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var connection = await context.Connections.FirstOrDefaultAsync(x => x.Id == request.ConnectionId, cancellationToken)
-                         ?? throw new BusinessException($"连接不存在：{request.ConnectionId}");
+                         ?? throw new MetaDataException($"连接不存在：{request.ConnectionId}");
 
         var dialect = _dialects.Resolve(connection.DatabaseType);
         var inspector = _inspectors.Resolve(connection.DatabaseType);
@@ -48,10 +48,10 @@ public class MetadataImportService
         var wanted = request.Tables
             .GroupBy(t => (t.Schema ?? string.Empty).Trim() + "|" + t.TableName.Trim())
             .Select(g => g.First())
-            .Select(t => new TableSchemaSample { Schema = t.Schema?.Trim(), TableName = t.TableName.Trim() })
+            .Select(t => inspector.CreateTableSample(t.Schema?.Trim(), t.TableName.Trim()))
             .ToList();
 
-        IReadOnlyList<ColumnSchemaSample> columns;
+        IReadOnlyList<IColumnSchemaSample> columns;
         await using (var adoConn = await _connectionFactory.OpenAsync(connection, cancellationToken))
         {
             columns = await inspector.GetColumnsAsync(adoConn, connection.DefaultSchema, wanted, cancellationToken);

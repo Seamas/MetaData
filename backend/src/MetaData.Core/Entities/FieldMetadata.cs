@@ -1,4 +1,4 @@
-using MetaData.Core.Enums;
+using MetaData.Abstractions.Enums;
 
 namespace MetaData.Core.Entities;
 

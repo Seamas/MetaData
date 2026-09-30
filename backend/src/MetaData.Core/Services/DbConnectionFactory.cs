@@ -1,6 +1,5 @@
 using System.Data.Common;
-using MetaData.Core.Abstractions;
-using MetaData.Core.Dialects;
+using MetaData.Abstractions;
 using MetaData.Core.Entities;
 
 namespace MetaData.Core.Services;

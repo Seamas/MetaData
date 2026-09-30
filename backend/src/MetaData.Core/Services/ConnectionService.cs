@@ -1,12 +1,12 @@
 using System.Data.Common;
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
+using MetaData.Abstractions.Schema;
 using MetaData.Core.Data;
-using MetaData.Core.Dialects;
+using MetaData.Providers.Dialects;
 using MetaData.Core.Entities;
-using MetaData.Core.Enums;
-using MetaData.Core.Infrastructure;
+using MetaData.Abstractions.Enums;
+using MetaData.Abstractions.Exceptions;
 using MetaData.Core.Models;
-using MetaData.Core.SchemaInspection;
 using Microsoft.EntityFrameworkCore;
 
 namespace MetaData.Core.Services;
@@ -16,14 +16,14 @@ public class ConnectionService
 {
     private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
     private readonly IDbProviderRegistry _providers;
-    private readonly SchemaInspectorRegistry _inspectors;
+    private readonly ISchemaInspectorRegistry _inspectors;
     private readonly ISecretProtector _protector;
     private readonly IDbConnectionFactory _connectionFactory;
 
     public ConnectionService(
         IDbContextFactory<MetaDataDbContext> contextFactory,
         IDbProviderRegistry providers,
-        SchemaInspectorRegistry inspectors,
+        ISchemaInspectorRegistry inspectors,
         ISecretProtector protector,
         IDbConnectionFactory connectionFactory)
     {
@@ -45,7 +45,7 @@ public class ConnectionService
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            throw new BusinessException("连接名称不能为空。");
+            throw new MetaDataException("连接名称不能为空。");
         }
 
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
@@ -54,12 +54,12 @@ public class ConnectionService
             .AnyAsync(x => x.Name == dto.Name.Trim() && x.Id != dto.Id, cancellationToken);
         if (nameExists)
         {
-            throw new BusinessException($"连接名称“{dto.Name.Trim()}”已存在。");
+            throw new MetaDataException($"连接名称“{dto.Name.Trim()}”已存在。");
         }
 
         var entity = dto.Id > 0
             ? await context.Connections.FindAsync([dto.Id], cancellationToken)
-              ?? throw new BusinessException($"连接不存在：{dto.Id}")
+              ?? throw new MetaDataException($"连接不存在：{dto.Id}")
             : new DbConnectionInfo();
 
         entity.Name = dto.Name.Trim();
@@ -86,7 +86,7 @@ public class ConnectionService
             }
             else if (dto.Id == 0)
             {
-                throw new BusinessException("高级模式下必须填写连接串。");
+                throw new MetaDataException("高级模式下必须填写连接串。");
             }
         }
         else
@@ -97,7 +97,7 @@ public class ConnectionService
             }
             else if (dto.Id == 0 && dto.AuthMode != AuthMode.Integrated)
             {
-                throw new BusinessException("请填写密码。");
+                throw new MetaDataException("请填写密码。");
             }
         }
 
@@ -115,7 +115,7 @@ public class ConnectionService
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
         var entity = await context.Connections.FindAsync([id], cancellationToken)
-                     ?? throw new BusinessException($"连接不存在：{id}");
+                     ?? throw new MetaDataException($"连接不存在：{id}");
         context.Connections.Remove(entity);
         await context.SaveChangesAsync(cancellationToken);
     }
@@ -146,7 +146,7 @@ public class ConnectionService
 
             return new ConnectionTestResultDto { Success = true, ServerVersion = version };
         }
-        catch (Exception ex) when (ex is BusinessException or DbException or InvalidOperationException)
+        catch (Exception ex) when (ex is MetaDataException or DbException or InvalidOperationException)
         {
             return new ConnectionTestResultDto { Success = false, Message = ex.Message };
         }
@@ -167,7 +167,7 @@ public class ConnectionService
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
         return await context.Connections.AsNoTracking().FirstOrDefaultAsync(x => x.Id == connectionId, cancellationToken)
-               ?? throw new BusinessException($"连接不存在：{connectionId}");
+               ?? throw new MetaDataException($"连接不存在：{connectionId}");
     }
 
     /// <summary>构造用于执行（测试/查询）的连接实体：合并已存凭据与表单新值。</summary>
@@ -224,7 +224,7 @@ public class ConnectionService
             {
                 if (string.IsNullOrWhiteSpace(dto.AdvancedConnectionString))
                 {
-                    throw new BusinessException("高级模式下必须填写连接串。");
+                    throw new MetaDataException("高级模式下必须填写连接串。");
                 }
 
                 entity.AdvancedConnectionStringProtected = _protector.Protect(dto.AdvancedConnectionString.Trim());
@@ -233,7 +233,7 @@ public class ConnectionService
             {
                 if (string.IsNullOrEmpty(dto.Password))
                 {
-                    throw new BusinessException("请填写密码。");
+                    throw new MetaDataException("请填写密码。");
                 }
 
                 entity.PasswordProtected = _protector.Protect(dto.Password);

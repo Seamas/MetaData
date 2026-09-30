@@ -1,10 +1,12 @@
 using System.Data.Common;
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
 using MetaData.Core.Data;
-using MetaData.Core.Dialects;
-using MetaData.Core.Enums;
-using MetaData.Core.Infrastructure;
-using MetaData.Core.SchemaInspection;
+using MetaData.Providers.Dialects;
+using MetaData.Providers.Registries;
+using MetaData.Abstractions.Enums;
+using MetaData.Abstractions.Exceptions;
+using MetaData.Abstractions.Schema;
+using MetaData.Providers.SchemaInspection;
 using MetaData.Core.Security;
 using MetaData.Core.Services;
 using Microsoft.AspNetCore.Builder;
@@ -66,7 +68,7 @@ public static class MetaDataServiceCollectionExtensions
         services.AddSingleton<ISchemaInspector>(new SqlServerSchemaInspector(dialects.OfType<SqlServerDialect>().First()));
         services.AddSingleton<ISchemaInspector>(new Db2SchemaInspector(dialects.OfType<Db2Dialect>().First()));
         services.AddSingleton<ISchemaInspector>(new OracleSchemaInspector(dialects.OfType<OracleDialect>().First()));
-        services.AddSingleton<SchemaInspectorRegistry>();
+        services.AddSingleton<ISchemaInspectorRegistry, SchemaInspectorRegistry>();
 
         // 业务服务
         services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
@@ -100,11 +102,9 @@ public static class MetaDataServiceCollectionExtensions
         DbProviderFactory factory)
         => services.AddSingleton(new DatabaseProviderRegistration(databaseType, factory));
 
-    /// <summary>启用异常中间件并确保元数据库已创建（首版使用 EnsureCreated）。</summary>
+    /// <summary>确保元数据库已创建（首版使用 EnsureCreated）。异常处理由宿主自行配置，核心模块不内置中间件。</summary>
     public static async Task<IApplicationBuilder> UseMetaDataCoreAsync(this IApplicationBuilder app)
     {
-        app.UseMiddleware<BusinessExceptionMiddleware>();
-
         using var scope = app.ApplicationServices.CreateScope();
         var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<MetaDataDbContext>>();
         await using var context = await contextFactory.CreateDbContextAsync();

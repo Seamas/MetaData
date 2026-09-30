@@ -1,4 +1,4 @@
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace MetaData.Core.Services;

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using MetaData.Abstractions.Exceptions;
 using MetaData.Core;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +13,7 @@ builder.Services.AddMetaDataCore(options => options.UseSqlite("Data Source=metad
 // 2) 业务库 ADO.NET 驱动按需注册（核心模块不引用任何驱动包）。
 //    使用哪种库，就在本项目 dotnet add package 对应包，并取消下面相应注释：
 //
-// using MetaData.Core.Enums;
+// using MetaData.Abstractions.Enums;
 // using MySqlConnector;
 // builder.Services.AddDatabaseProvider(DatabaseType.MySql, MySqlConnectorFactory.Instance);
 //
@@ -32,7 +34,23 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 业务异常中间件 + EnsureCreated 元数据建库
+// 友好异常：MetaDataException（含驱动未注册等）统一转 400 JSON。
+// Core 模块不内置中间件，宿主也可替换为自己的异常处理组件。
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (MetaDataException ex)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { success = false, message = ex.Message }));
+    }
+});
+
+// EnsureCreated 元数据建库
 await app.UseMetaDataCoreAsync();
 
 if (app.Environment.IsDevelopment())

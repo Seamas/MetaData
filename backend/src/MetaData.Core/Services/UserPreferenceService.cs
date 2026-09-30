@@ -1,6 +1,6 @@
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
 using MetaData.Core.Data;
-using MetaData.Core.Infrastructure;
+using MetaData.Abstractions.Exceptions;
 using MetaData.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,14 +45,14 @@ public class UserPreferenceService
             .ToListAsync(cancellationToken);
         if (validFieldIds.Count == 0)
         {
-            throw new BusinessException($"表不存在或没有字段：{request.TableId}");
+            throw new MetaDataException($"表不存在或没有字段：{request.TableId}");
         }
 
         foreach (var item in request.Items)
         {
             if (!validFieldIds.Contains(item.FieldId))
             {
-                throw new BusinessException($"字段不属于该表：{item.FieldId}");
+                throw new MetaDataException($"字段不属于该表：{item.FieldId}");
             }
 
             var entity = await context.UserFieldPreferences.FirstOrDefaultAsync(

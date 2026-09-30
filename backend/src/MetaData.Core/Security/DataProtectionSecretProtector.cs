@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-using MetaData.Core.Abstractions;
-using MetaData.Core.Infrastructure;
+using MetaData.Abstractions;
+using MetaData.Abstractions.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace MetaData.Core.Security;
@@ -50,7 +50,7 @@ public class DataProtectionSecretProtector : ISecretProtector
         }
         catch (CryptographicException ex)
         {
-            throw new BusinessException("保存的密码/连接串解密失败（可能因部署环境的密钥变更），请重新录入连接信息。")
+            throw new MetaDataException("保存的密码/连接串解密失败（可能因部署环境的密钥变更），请重新录入连接信息。")
             {
                 Source = ex.Source
             };

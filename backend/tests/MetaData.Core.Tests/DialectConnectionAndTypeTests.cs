@@ -1,6 +1,6 @@
-using MetaData.Core.Abstractions;
-using MetaData.Core.Dialects;
-using MetaData.Core.Enums;
+using MetaData.Abstractions;
+using MetaData.Providers.Dialects;
+using MetaData.Abstractions.Enums;
 using Xunit;
 
 namespace MetaData.Core.Tests;

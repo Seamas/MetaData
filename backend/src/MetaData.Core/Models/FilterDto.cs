@@ -1,5 +1,5 @@
 using System.Text.Json;
-using MetaData.Core.Enums;
+using MetaData.Abstractions.Enums;
 
 namespace MetaData.Core.Models;
 

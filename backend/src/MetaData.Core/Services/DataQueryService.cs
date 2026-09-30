@@ -2,12 +2,12 @@ using System.Data.Common;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using MetaData.Core.Abstractions;
+using MetaData.Abstractions;
 using MetaData.Core.Data;
-using MetaData.Core.Dialects;
+using MetaData.Providers.Dialects;
 using MetaData.Core.Entities;
-using MetaData.Core.Enums;
-using MetaData.Core.Infrastructure;
+using MetaData.Abstractions.Enums;
+using MetaData.Abstractions.Exceptions;
 using MetaData.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,7 +59,7 @@ public class DataQueryService
     {
         if (request.TableId <= 0)
         {
-            throw new BusinessException("请选择要查询的表。");
+            throw new MetaDataException("请选择要查询的表。");
         }
 
         var page = request.Page < 1 ? 1 : request.Page;
@@ -70,16 +70,16 @@ public class DataQueryService
         var table = await context.Tables.AsNoTracking()
             .Include(t => t.Connection)
             .FirstOrDefaultAsync(t => t.Id == request.TableId, cancellationToken)
-            ?? throw new BusinessException($"表不存在：{request.TableId}");
+            ?? throw new MetaDataException($"表不存在：{request.TableId}");
 
         if (!table.IsPublished)
         {
-            throw new BusinessException("该表尚未开放查询。");
+            throw new MetaDataException("该表尚未开放查询。");
         }
 
         if (table.Connection is null || !table.Connection.IsEnabled)
         {
-            throw new BusinessException("该表所属连接已停用。");
+            throw new MetaDataException("该表所属连接已停用。");
         }
 
         var fields = await context.Fields.AsNoTracking()
@@ -88,7 +88,7 @@ public class DataQueryService
             .ToListAsync(cancellationToken);
         if (fields.Count == 0)
         {
-            throw new BusinessException("该表没有可用字段元数据。");
+            throw new MetaDataException("该表没有可用字段元数据。");
         }
 
         var fieldByAlias = fields.ToDictionary(f => f.Alias, StringComparer.OrdinalIgnoreCase);
@@ -115,7 +115,7 @@ public class DataQueryService
         var visibleColumns = effectiveColumns.Where(x => x.Visible).Select(x => x.Field).ToList();
         if (visibleColumns.Count == 0)
         {
-            throw new BusinessException("没有可显示的列，请在列设置中至少显示一列。");
+            throw new MetaDataException("没有可显示的列，请在列设置中至少显示一列。");
         }
 
         // 过滤条件：别名 → 物理字段
@@ -124,12 +124,12 @@ public class DataQueryService
         {
             if (!fieldByAlias.TryGetValue(dto.Alias, out var field))
             {
-                throw new BusinessException($"未知字段别名：{dto.Alias}");
+                throw new MetaDataException($"未知字段别名：{dto.Alias}");
             }
 
             if (!QueryOperatorMap.IsOperatorAllowed(field.DataCategory, dto.Operator))
             {
-                throw new BusinessException($"字段“{field.DisplayName ?? field.FieldName}”不支持操作符：{dto.Operator}");
+                throw new MetaDataException($"字段“{field.DisplayName ?? field.FieldName}”不支持操作符：{dto.Operator}");
             }
 
             var info = QueryOperatorMap.OperatorInfo[dto.Operator];
@@ -140,7 +140,7 @@ public class DataQueryService
                 value = ConvertFilterValue(field, dto.Value);
                 if (value is null)
                 {
-                    throw new BusinessException($"字段“{field.DisplayName ?? field.FieldName}”的查询值不能为空。");
+                    throw new MetaDataException($"字段“{field.DisplayName ?? field.FieldName}”的查询值不能为空。");
                 }
             }
 
@@ -149,7 +149,7 @@ public class DataQueryService
                 value2 = ConvertFilterValue(field, dto.Value2);
                 if (value2 is null)
                 {
-                    throw new BusinessException($"字段“{field.DisplayName ?? field.FieldName}”的区间结束值不能为空。");
+                    throw new MetaDataException($"字段“{field.DisplayName ?? field.FieldName}”的区间结束值不能为空。");
                 }
             }
 
@@ -168,7 +168,7 @@ public class DataQueryService
         {
             if (!fieldByAlias.TryGetValue(dto.Alias, out var field))
             {
-                throw new BusinessException($"未知字段别名：{dto.Alias}");
+                throw new MetaDataException($"未知字段别名：{dto.Alias}");
             }
 
             sorts.Add(new SortItem { ColumnName = field.FieldName, Direction = dto.Direction });
@@ -281,7 +281,7 @@ public class DataQueryService
             {
                 if (!decimal.TryParse(v.GetRawText(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
                 {
-                    throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”不是有效的数字。");
+                    throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”不是有效的数字。");
                 }
 
                 // 整数列绑定 long；显式小数列绑定 decimal；浮点列绑定 double
@@ -302,7 +302,7 @@ public class DataQueryService
             {
                 if (v.ValueKind != JsonValueKind.String)
                 {
-                    throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”需要日期时间值。");
+                    throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”需要日期时间值。");
                 }
 
                 var s = v.GetString()!;
@@ -313,7 +313,7 @@ public class DataQueryService
 
                 if (!DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AllowWhiteSpaces, out var dt))
                 {
-                    throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”日期格式无法识别：{s}");
+                    throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”日期格式无法识别：{s}");
                 }
 
                 return dt;
@@ -331,7 +331,7 @@ public class DataQueryService
                     return b;
                 }
 
-                throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”需要布尔值。");
+                throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”需要布尔值。");
             }
 
             case DataCategory.Guid:
@@ -341,11 +341,11 @@ public class DataQueryService
                     return g;
                 }
 
-                throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”不是有效的唯一标识。");
+                throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”不是有效的唯一标识。");
             }
 
             case DataCategory.Binary:
-                throw new BusinessException($"“{field.DisplayName ?? field.FieldName}”为二进制字段，不支持条件查询。");
+                throw new MetaDataException($"“{field.DisplayName ?? field.FieldName}”为二进制字段，不支持条件查询。");
 
             default:
                 return v.ValueKind == JsonValueKind.String ? v.GetString() : v.GetRawText();
