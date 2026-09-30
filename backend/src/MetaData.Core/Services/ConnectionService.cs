@@ -14,20 +14,20 @@ namespace MetaData.Core.Services;
 /// <summary>数据库连接元数据管理与连接测试。</summary>
 public class ConnectionService
 {
-    private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
+    private readonly IMetaDataDbContext _dbContext;
     private readonly IDbProviderRegistry _providers;
     private readonly ISchemaInspectorRegistry _inspectors;
     private readonly ISecretProtector _protector;
     private readonly IDbConnectionFactory _connectionFactory;
 
     public ConnectionService(
-        IDbContextFactory<MetaDataDbContext> contextFactory,
+        IMetaDataDbContext dbContext,
         IDbProviderRegistry providers,
         ISchemaInspectorRegistry inspectors,
         ISecretProtector protector,
         IDbConnectionFactory connectionFactory)
     {
-        _contextFactory = contextFactory;
+        _dbContext = dbContext;
         _providers = providers;
         _inspectors = inspectors;
         _protector = protector;
@@ -36,8 +36,7 @@ public class ConnectionService
 
     public async Task<List<ConnectionDto>> GetListAsync(CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var list = await context.Connections.AsNoTracking().OrderBy(x => x.Id).ToListAsync(cancellationToken);
+        var list = await _dbContext.Connections.AsNoTracking().OrderBy(x => x.Id).ToListAsync(cancellationToken);
         return list.Select(ToDto).ToList();
     }
 
@@ -48,9 +47,8 @@ public class ConnectionService
             throw new MetaDataException("连接名称不能为空。");
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var nameExists = await context.Connections.AsNoTracking()
+        var nameExists = await _dbContext.Connections.AsNoTracking()
             .AnyAsync(x => x.Name == dto.Name.Trim() && x.Id != dto.Id, cancellationToken);
         if (nameExists)
         {
@@ -58,7 +56,7 @@ public class ConnectionService
         }
 
         var entity = dto.Id > 0
-            ? await context.Connections.FindAsync([dto.Id], cancellationToken)
+            ? await _dbContext.Connections.FindAsync([dto.Id], cancellationToken)
               ?? throw new MetaDataException($"连接不存在：{dto.Id}")
             : new DbConnectionInfo();
 
@@ -104,20 +102,19 @@ public class ConnectionService
         if (dto.Id == 0)
         {
             entity.CreatedAt = entity.UpdatedAt;
-            context.Connections.Add(entity);
+            _dbContext.Connections.Add(entity);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
         return entity.Id;
     }
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await context.Connections.FindAsync([id], cancellationToken)
+        var entity = await _dbContext.Connections.FindAsync([id], cancellationToken)
                      ?? throw new MetaDataException($"连接不存在：{id}");
-        context.Connections.Remove(entity);
-        await context.SaveChangesAsync(cancellationToken);
+        _dbContext.Connections.Remove(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>测试连接：已保存且密码留空时使用已存凭据；未保存时使用表单中的明文值。成功时回写版本缓存。</summary>
@@ -134,13 +131,12 @@ public class ConnectionService
             // 已保存的连接：回写版本
             if (entity.Id > 0)
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                var saved = await context.Connections.FindAsync([entity.Id], cancellationToken);
+                        var saved = await _dbContext.Connections.FindAsync([entity.Id], cancellationToken);
                 if (saved is not null)
                 {
                     saved.ServerVersion = version;
                     saved.UpdatedAt = DateTime.Now;
-                    await context.SaveChangesAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                 }
             }
 
@@ -165,8 +161,7 @@ public class ConnectionService
 
     public async Task<DbConnectionInfo> GetStoredEntityAsync(long connectionId, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.Connections.AsNoTracking().FirstOrDefaultAsync(x => x.Id == connectionId, cancellationToken)
+        return await _dbContext.Connections.AsNoTracking().FirstOrDefaultAsync(x => x.Id == connectionId, cancellationToken)
                ?? throw new MetaDataException($"连接不存在：{connectionId}");
     }
 
@@ -177,8 +172,7 @@ public class ConnectionService
 
         if (dto.Id > 0)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-            entity = await context.Connections.AsNoTracking().FirstAsync(x => x.Id == dto.Id, cancellationToken);
+                entity = await _dbContext.Connections.AsNoTracking().FirstAsync(x => x.Id == dto.Id, cancellationToken);
 
             // 表单可编辑字段覆盖
             entity.InputMode = dto.InputMode;

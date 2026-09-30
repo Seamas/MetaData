@@ -2,7 +2,7 @@ using MetaData.Core.Models;
 using MetaData.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MetaData.Core.Api;
+namespace MetaData.Web.Controllers;
 
 [ApiController]
 [Route("api/data")]
@@ -15,7 +15,6 @@ public class DataController : ControllerBase
     {
         _queryService = queryService;
         _preferenceService = preferenceService;
-
     }
 
     [HttpGet("published-tables")]

@@ -3,22 +3,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MetaData.Core.Data;
 
-/// <summary>元数据库上下文。仅依赖 EF Core 关系型抽象，具体提供程序由宿主配置。</summary>
-public class MetaDataDbContext : DbContext
+/// <summary>
+/// MetaData 模块表结构注册扩展。宿主在集成 DbContext 的 OnModelCreating 中调用
+/// <c>modelBuilder.ConfigureMetaData()</c> 即可纳入本模块的表映射，无需引用模块专属 DbContext。
+/// </summary>
+public static class MetaDataModelBuilderExtensions
 {
-    public MetaDataDbContext(DbContextOptions<MetaDataDbContext> options) : base(options)
-    {
-    }
-
-    public DbSet<DbConnectionInfo> Connections => Set<DbConnectionInfo>();
-
-    public DbSet<TableMetadata> Tables => Set<TableMetadata>();
-
-    public DbSet<FieldMetadata> Fields => Set<FieldMetadata>();
-
-    public DbSet<UserFieldPreference> UserFieldPreferences => Set<UserFieldPreference>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public static ModelBuilder ConfigureMetaData(this ModelBuilder modelBuilder)
     {
         var conn = modelBuilder.Entity<DbConnectionInfo>();
         conn.ToTable("md_connection");
@@ -71,5 +62,7 @@ public class MetaDataDbContext : DbContext
         pref.Property(x => x.UserId).HasMaxLength(100).IsRequired();
         pref.HasIndex(x => new { x.UserId, x.TableId, x.FieldId }).IsUnique();
         pref.HasIndex(x => new { x.UserId, x.TableId });
+
+        return modelBuilder;
     }
 }

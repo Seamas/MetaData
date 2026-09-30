@@ -13,18 +13,18 @@ namespace MetaData.Core.Services;
 /// <summary>从业务库读取结构并合并写入元数据表（已存在字段保留用户自定义配置）。</summary>
 public class MetadataImportService
 {
-    private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
+    private readonly IMetaDataDbContext _dbContext;
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly IDialectRegistry _dialects;
     private readonly ISchemaInspectorRegistry _inspectors;
 
     public MetadataImportService(
-        IDbContextFactory<MetaDataDbContext> contextFactory,
+        IMetaDataDbContext dbContext,
         IDbConnectionFactory connectionFactory,
         IDialectRegistry dialects,
         ISchemaInspectorRegistry inspectors)
     {
-        _contextFactory = contextFactory;
+        _dbContext = dbContext;
         _connectionFactory = connectionFactory;
         _dialects = dialects;
         _inspectors = inspectors;
@@ -37,9 +37,8 @@ public class MetadataImportService
             throw new MetaDataException("请至少选择一张表。");
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var connection = await context.Connections.FirstOrDefaultAsync(x => x.Id == request.ConnectionId, cancellationToken)
+        var connection = await _dbContext.Connections.FirstOrDefaultAsync(x => x.Id == request.ConnectionId, cancellationToken)
                          ?? throw new MetaDataException($"连接不存在：{request.ConnectionId}");
 
         var dialect = _dialects.Resolve(connection.DatabaseType);
@@ -74,7 +73,7 @@ public class MetadataImportService
                 continue;
             }
 
-            var table = await context.Tables.FirstOrDefaultAsync(
+            var table = await _dbContext.Tables.FirstOrDefaultAsync(
                 x => x.ConnectionId == connection.Id && x.Schema == sampleTable.Schema && x.TableName == sampleTable.TableName,
                 cancellationToken);
 
@@ -90,8 +89,8 @@ public class MetadataImportService
                     CreatedAt = now,
                     UpdatedAt = now
                 };
-                context.Tables.Add(table);
-                await context.SaveChangesAsync(cancellationToken); // 拿到表 Id
+                _dbContext.Tables.Add(table);
+                await _dbContext.SaveChangesAsync(cancellationToken); // 拿到表 Id
                 result.AddedTables++;
             }
             else
@@ -99,7 +98,7 @@ public class MetadataImportService
                 result.UpdatedTables++;
             }
 
-            var existingFields = await context.Fields
+            var existingFields = await _dbContext.Fields
                 .Where(x => x.TableId == table.Id)
                 .ToListAsync(cancellationToken);
             var existingByName = existingFields.ToDictionary(f => f.FieldName);
@@ -127,7 +126,7 @@ public class MetadataImportService
                 else
                 {
                     var alias = EnsureUniqueAlias(col.ColumnName, existingFields);
-                    context.Fields.Add(new FieldMetadata
+                    _dbContext.Fields.Add(new FieldMetadata
                     {
                         TableId = table.Id,
                         FieldName = col.ColumnName,
@@ -156,7 +155,7 @@ public class MetadataImportService
                 .Select(f => $"{sampleTable.TableName}.{f.FieldName}"));
 
             table.UpdatedAt = now;
-            await context.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         return result;

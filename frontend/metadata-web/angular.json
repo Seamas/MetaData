@@ -43,7 +43,7 @@
           "builder": "@angular/build:application",
           "options": {
             "outputPath": {
-              "base": "../../backend/src/MetaData.Web/wwwroot",
+              "base": "../../backend/src/MetaData.Host/wwwroot",
               "browser": ""
             },
             "browser": "src/main.ts",

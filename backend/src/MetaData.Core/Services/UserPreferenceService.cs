@@ -9,19 +9,18 @@ namespace MetaData.Core.Services;
 /// <summary>用户级字段偏好（顺序、显隐、宽度）。</summary>
 public class UserPreferenceService
 {
-    private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
+    private readonly IMetaDataDbContext _dbContext;
     private readonly ICurrentUser _currentUser;
 
-    public UserPreferenceService(IDbContextFactory<MetaDataDbContext> contextFactory, ICurrentUser currentUser)
+    public UserPreferenceService(IMetaDataDbContext dbContext, ICurrentUser currentUser)
     {
-        _contextFactory = contextFactory;
+        _dbContext = dbContext;
         _currentUser = currentUser;
     }
 
     public async Task<List<FieldPreferenceDto>> GetAsync(long tableId, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var list = await context.UserFieldPreferences.AsNoTracking()
+        var list = await _dbContext.UserFieldPreferences.AsNoTracking()
             .Where(x => x.UserId == _currentUser.UserId && x.TableId == tableId)
             .OrderBy(x => x.Ordinal)
             .ToListAsync(cancellationToken);
@@ -37,9 +36,8 @@ public class UserPreferenceService
 
     public async Task SaveAsync(SavePreferencesRequest request, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var validFieldIds = await context.Fields.AsNoTracking()
+        var validFieldIds = await _dbContext.Fields.AsNoTracking()
             .Where(f => f.TableId == request.TableId)
             .Select(f => f.Id)
             .ToListAsync(cancellationToken);
@@ -55,13 +53,13 @@ public class UserPreferenceService
                 throw new MetaDataException($"字段不属于该表：{item.FieldId}");
             }
 
-            var entity = await context.UserFieldPreferences.FirstOrDefaultAsync(
+            var entity = await _dbContext.UserFieldPreferences.FirstOrDefaultAsync(
                 x => x.UserId == _currentUser.UserId && x.TableId == request.TableId && x.FieldId == item.FieldId,
                 cancellationToken);
 
             if (entity is null)
             {
-                context.UserFieldPreferences.Add(new Entities.UserFieldPreference
+                _dbContext.UserFieldPreferences.Add(new Entities.UserFieldPreference
                 {
                     UserId = _currentUser.UserId,
                     TableId = request.TableId,
@@ -81,6 +79,6 @@ public class UserPreferenceService
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

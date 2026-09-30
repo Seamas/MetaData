@@ -1,41 +1,32 @@
 using System.Data.Common;
 using MetaData.Abstractions;
-using MetaData.Core.Data;
 using MetaData.Providers.Dialects;
 using MetaData.Providers.Registries;
 using MetaData.Abstractions.Enums;
-using MetaData.Abstractions.Exceptions;
 using MetaData.Abstractions.Schema;
 using MetaData.Providers.SchemaInspection;
 using MetaData.Core.Security;
 using MetaData.Core.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MetaData.Core;
 
 /// <summary>
-/// 核心模块一键注册：宿主仅需传入元数据库的 EF Core 提供程序配置即可启动。
-/// 业务库 ADO.NET 驱动通过 AddDatabaseProvider 按需注册，核心模块不引用任何驱动包。
+/// 注册 MetaData 模块的业务服务、方言与注册表。模块不提供 DbContext：
+/// 宿主使用集成 DbContext 实现 <see cref="Data.IMetaDataDbContext"/>，并在 OnModelCreating
+/// 中调用 ConfigureMetaData；业务库 ADO.NET 驱动通过 AddDatabaseProvider 按需注册。
 /// </summary>
 public static class MetaDataServiceCollectionExtensions
 {
-    public const string DevCorsPolicyName = "MetaDataDev";
-
     public static IServiceCollection AddMetaDataCore(
         this IServiceCollection services,
-        Action<DbContextOptionsBuilder> configureMetadataDb,
         Action<MetaDataOptions>? configureOptions = null)
     {
         if (configureOptions is not null)
         {
             services.Configure(configureOptions);
         }
-
-        // 元数据库（具体提供程序由宿主配置）
-        services.AddDbContextFactory<MetaDataDbContext>(configureMetadataDb);
 
         // 安全与用户身份
         services.AddDataProtection();
@@ -78,20 +69,6 @@ public static class MetaDataServiceCollectionExtensions
         services.AddScoped<DataQueryService>();
         services.AddScoped<UserPreferenceService>();
 
-        // 核心模块内的 Controller 自动作为应用部件加载，枚举统一按字符串输出
-        services.AddControllers()
-            .AddApplicationPart(typeof(MetaDataServiceCollectionExtensions).Assembly)
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-            });
-
-        // 开发环境便捷 CORS（宿主 UseCors 时启用）
-        services.AddCors(options => options.AddPolicy(DevCorsPolicyName, policy =>
-            policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()));
-
         return services;
     }
 
@@ -101,15 +78,4 @@ public static class MetaDataServiceCollectionExtensions
         DatabaseType databaseType,
         DbProviderFactory factory)
         => services.AddSingleton(new DatabaseProviderRegistration(databaseType, factory));
-
-    /// <summary>确保元数据库已创建（首版使用 EnsureCreated）。异常处理由宿主自行配置，核心模块不内置中间件。</summary>
-    public static async Task<IApplicationBuilder> UseMetaDataCoreAsync(this IApplicationBuilder app)
-    {
-        using var scope = app.ApplicationServices.CreateScope();
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<MetaDataDbContext>>();
-        await using var context = await contextFactory.CreateDbContextAsync();
-        await context.Database.EnsureCreatedAsync();
-
-        return app;
-    }
 }

@@ -2,7 +2,7 @@ using MetaData.Core.Models;
 using MetaData.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MetaData.Core.Api;
+namespace MetaData.Web.Controllers;
 
 [ApiController]
 [Route("api/metadata")]

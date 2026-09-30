@@ -4,6 +4,7 @@
     <Project Path="src/MetaData.Providers/MetaData.Providers.csproj" />
     <Project Path="src/MetaData.Core/MetaData.Core.csproj" />
     <Project Path="src/MetaData.Web/MetaData.Web.csproj" />
+    <Project Path="src/MetaData.Host/MetaData.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MetaData.Core.Tests/MetaData.Core.Tests.csproj" />

@@ -12,24 +12,23 @@ public partial class MetadataService
 {
     private static readonly Regex AliasPattern = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
-    private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
+    private readonly IMetaDataDbContext _dbContext;
 
-    public MetadataService(IDbContextFactory<MetaDataDbContext> contextFactory)
+    public MetadataService(IMetaDataDbContext dbContext)
     {
-        _contextFactory = contextFactory;
+        _dbContext = dbContext;
     }
 
     public async Task<List<TableDto>> GetTablesAsync(long connectionId, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var query = context.Tables.AsNoTracking().AsQueryable();
+        var query = _dbContext.Tables.AsNoTracking().AsQueryable();
         if (connectionId > 0)
         {
             query = query.Where(x => x.ConnectionId == connectionId);
         }
 
         var tables = await query.OrderBy(x => x.ConnectionId).ThenBy(x => x.Schema).ThenBy(x => x.TableName).ToListAsync(cancellationToken);
-        var fieldCounts = await context.Fields.AsNoTracking()
+        var fieldCounts = await _dbContext.Fields.AsNoTracking()
             .GroupBy(f => f.TableId)
             .Select(g => new { TableId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.TableId, x => x.Count, cancellationToken);
@@ -50,8 +49,7 @@ public partial class MetadataService
 
     public async Task<List<FieldDto>> GetFieldsAsync(long tableId, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var fields = await context.Fields.AsNoTracking()
+        var fields = await _dbContext.Fields.AsNoTracking()
             .Where(x => x.TableId == tableId)
             .OrderBy(x => x.Ordinal)
             .ToListAsync(cancellationToken);
@@ -65,9 +63,8 @@ public partial class MetadataService
             throw new MetaDataException("表名不能为空。");
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var exists = await context.Tables.AsNoTracking().AnyAsync(
+        var exists = await _dbContext.Tables.AsNoTracking().AnyAsync(
             x => x.ConnectionId == dto.ConnectionId && x.Schema == dto.Schema && x.TableName == dto.TableName && x.Id != dto.Id,
             cancellationToken);
         if (exists)
@@ -76,7 +73,7 @@ public partial class MetadataService
         }
 
         var entity = dto.Id > 0
-            ? await context.Tables.FindAsync([dto.Id], cancellationToken)
+            ? await _dbContext.Tables.FindAsync([dto.Id], cancellationToken)
               ?? throw new MetaDataException($"表不存在：{dto.Id}")
             : new TableMetadata
             {
@@ -88,7 +85,7 @@ public partial class MetadataService
 
         if (dto.Id == 0)
         {
-            var connExists = await context.Connections.AsNoTracking().AnyAsync(x => x.Id == dto.ConnectionId, cancellationToken);
+            var connExists = await _dbContext.Connections.AsNoTracking().AnyAsync(x => x.Id == dto.ConnectionId, cancellationToken);
             if (!connExists)
             {
                 throw new MetaDataException($"连接不存在：{dto.ConnectionId}");
@@ -103,10 +100,10 @@ public partial class MetadataService
 
         if (dto.Id == 0)
         {
-            context.Tables.Add(entity);
+            _dbContext.Tables.Add(entity);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
         return entity.Id;
     }
 
@@ -117,8 +114,7 @@ public partial class MetadataService
             return;
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var tableExists = await context.Tables.AsNoTracking().AnyAsync(x => x.Id == request.TableId, cancellationToken);
+        var tableExists = await _dbContext.Tables.AsNoTracking().AnyAsync(x => x.Id == request.TableId, cancellationToken);
         if (!tableExists)
         {
             throw new MetaDataException($"表不存在：{request.TableId}");
@@ -134,7 +130,7 @@ public partial class MetadataService
         }
 
         var ids = request.Fields.Select(f => f.Id).ToHashSet();
-        var stored = await context.Fields.Where(x => x.TableId == request.TableId && ids.Contains(x.Id)).ToListAsync(cancellationToken);
+        var stored = await _dbContext.Fields.Where(x => x.TableId == request.TableId && ids.Contains(x.Id)).ToListAsync(cancellationToken);
         if (stored.Count != request.Fields.Count)
         {
             throw new MetaDataException("部分字段不存在或不属于该表，保存中止。");
@@ -164,29 +160,27 @@ public partial class MetadataService
             entity.UpdatedAt = DateTime.Now;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task PublishAsync(PublishTableRequest request, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var table = await context.Tables.FindAsync([request.TableId], cancellationToken)
+        var table = await _dbContext.Tables.FindAsync([request.TableId], cancellationToken)
                     ?? throw new MetaDataException($"表不存在：{request.TableId}");
         table.IsPublished = request.IsPublished;
         table.UpdatedAt = DateTime.Now;
-        await context.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DeleteTableAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        var table = await context.Tables.FindAsync([id], cancellationToken)
+        var table = await _dbContext.Tables.FindAsync([id], cancellationToken)
                     ?? throw new MetaDataException($"表不存在：{id}");
-        context.Tables.Remove(table);
+        _dbContext.Tables.Remove(table);
         // 用户偏好无外键约束，手动清理
-        var prefs = context.UserFieldPreferences.Where(x => x.TableId == id);
-        context.UserFieldPreferences.RemoveRange(prefs);
-        await context.SaveChangesAsync(cancellationToken);
+        var prefs = _dbContext.UserFieldPreferences.Where(x => x.TableId == id);
+        _dbContext.UserFieldPreferences.RemoveRange(prefs);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static FieldDto ToDto(FieldMetadata f) => new()

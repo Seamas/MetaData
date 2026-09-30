@@ -4,8 +4,8 @@
 
 ## 1. 设计目标
 
-- **模块化**：抽象契约、数据库方言实现、业务逻辑三层分离，各自独立编译为 DLL，可单独复用。
-- **依赖单向**：`Abstractions ← Providers ← Core ← Web`，严禁逆向或循环引用。
+- **模块化**：抽象契约、数据库方言实现、业务逻辑、HTTP 接口、启动宿主五层分离，各自独立编译为 DLL，可单独复用；宿主可组合多个业务模块统一启动。
+- **依赖单向**：`Abstractions ← Providers ← Core ← Web ← Host`，严禁逆向或循环引用。
 - **零驱动耦合**：核心模块与抽象层不引用任何具体数据库驱动（MySqlConnector / Npgsql / …），驱动由宿主按需注册。
 - **命名空间规范**：`项目名称.文件夹`，如 `MetaData.Abstractions.Enums`、`MetaData.Core.Services`。
 
@@ -13,14 +13,19 @@
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  MetaData.Web  （启动宿主 / 配置）                  │
+│  MetaData.Host  （启动宿主 / 配置与装配）            │
 │  Program.cs · CORS · Swagger · 静态文件 · 驱动注册   │
 └──────────────────────┬──────────────────────────────┘
                        │ 引用
 ┌──────────────────────▼──────────────────────────────┐
+│  MetaData.Web  （HTTP 接口层 / 类库）                │
+│  Controllers · MetaDataWebServiceCollectionExtensions│
+└──────────────────────┬──────────────────────────────┘
+                       │ 引用
+┌──────────────────────▼──────────────────────────────┐
 │  MetaData.Core  （业务层）                           │
-│  Api · Services · Data · Entities · Models          │
-│  Security · MetaDataServiceCollectionExtensions     │
+│  Services · Data · Entities · Models · Security     │
+│  MetaDataServiceCollectionExtensions                │
 └──────────────────────┬──────────────────────────────┘
                        │ 引用
 ┌──────────────────────▼──────────────────────────────┐
@@ -38,10 +43,11 @@
 
 | 模块 | 引用 | 被引用 |
 |---|---|---|
-| `MetaData.Abstractions` | 无（零依赖） | Providers, Core, Web |
-| `MetaData.Providers` | Abstractions | Core, Web |
+| `MetaData.Abstractions` | 无（零依赖） | Providers, Core, Web, Host |
+| `MetaData.Providers` | Abstractions | Core |
 | `MetaData.Core` | Abstractions + Providers | Web |
-| `MetaData.Web` | Core | — |
+| `MetaData.Web` | Core（类库，含 HTTP 接口） | Host |
+| `MetaData.Host` | Web（SDK.Web，唯一启动点） | — |
 
 ## 3. 各模块职责
 
@@ -73,31 +79,44 @@
 
 ### 3.3 MetaData.Core — 业务层
 
-> 依赖 Abstractions + Providers。承载实体、EF DbContext、业务服务、Controller、DI 扩展。异常处理不内置，由宿主自行配置。
+> 依赖 Abstractions + Providers。承载实体、EF DbContext、业务服务、DTO、DI 扩展。不含任何 Controller 或 HTTP 管道装配；异常处理不内置，由宿主自行配置。
 
 | 命名空间 | 内容 |
 |---|---|
 | `MetaData.Core.Entities` | `DbConnectionInfo`、`TableMetadata`、`FieldMetadata`、`UserFieldPreference`（EF 实体） |
-| `MetaData.Core.Data` | `MetaDataDbContext`（EF Core，表名 `md_connection` 等，用 `IDbContextFactory`） |
+| `MetaData.Core.Data` | `IMetaDataDbContext`（模块数据访问契约，4 个 DbSet + SaveChangesAsync）、`MetaDataModelBuilderExtensions.ConfigureMetaData`（表结构注册扩展）；模块不提供 DbContext |
 | `MetaData.Core.Models` | 业务 DTO：`ConnectionDto`、`TableDto`、`FieldDto`、`DataQueryRequest`/`Response`、`FieldPreferenceDto` 等 24 个 |
 | `MetaData.Core.Services` | `ConnectionService`、`MetadataService`、`MetadataImportService`、`DataQueryService`、`UserPreferenceService`、`DbConnectionFactory`、`DefaultCurrentUser`、`MetaDataOptions`、`QueryOperatorMap` |
-| `MetaData.Core.Api` | `ConnectionsController`、`MetadataController`、`DataController`、`MetaController`（仅 GET/POST） |
 | `MetaData.Core.Security` | `DataProtectionSecretProtector` |
-| `MetaData.Core` | `MetaDataServiceCollectionExtensions`（`AddMetaDataCore` 一键注册） |
+| `MetaData.Core` | `MetaDataServiceCollectionExtensions`（`AddMetaDataCore` 注册业务服务、方言、注册表） |
 
-### 3.4 MetaData.Web — 启动宿主
+### 3.4 MetaData.Web — HTTP 接口层
 
-> 仅做配置：EF Core 提供程序、Swagger、CORS、静态文件、按需注册 ADO.NET 驱动、异常处理中间件。
+> 类库（`Microsoft.NET.Sdk` + `FrameworkReference Microsoft.AspNetCore.App`），依赖 Core。只承载 HTTP 入站适配器，不含启动代码与宿主配置。
+
+| 命名空间/文件 | 职责 |
+|---|---|
+| `MetaData.Web.Controllers` | `ConnectionsController`、`MetadataController`、`DataController`、`MetaController`（仅 GET/POST，GET 仅用于无参请求） |
+| `MetaDataWebServiceCollectionExtensions` | `AddMetaDataWeb`：`AddControllers().AddApplicationPart(本程序集)` + JSON 枚举字符串 |
+
+### 3.5 MetaData.Host — 启动宿主
+
+> `Microsoft.NET.Sdk.Web`，唯一启动点。仅做配置与模块装配：定义多模块共享的集成 DbContext、EF Core 提供程序、Swagger、CORS、静态文件、按需注册 ADO.NET 驱动、异常处理中间件。
 
 | 文件 | 职责 |
 |---|---|
-| `Program.cs` | `AddMetaDataCore(UseSqlite(...))`、`AddDatabaseProvider(...)`、`MetaDataException` 转 400 JSON、Swagger、静态文件 + SPA 回退 |
-| `MetaData.Web.csproj` | 引用 Core + Sqlite + Swashbuckle |
+| `Program.cs` | `AddDbContext<AppDbContext>(...)` + 接口映射、`AddMetaDataCore()` + `AddMetaDataWeb()`、`AddDatabaseProvider(...)`、`MetaDataException` 转 400 JSON、EnsureCreated、Swagger、静态文件 + SPA 回退 |
+| `Data/AppDbContext.cs` | 宿主集成 DbContext，实现 `IMetaDataDbContext`，OnModelCreating 调用 `ConfigureMetaData()`；新增模块时在此实现其 I*DbContext 并追加 Configure* |
+| `appsettings*.json` | 宿主配置 |
+| `MetaData.Host.csproj` | 引用 Web + Sqlite + Swashbuckle |
+| `wwwroot/` | Angular 构建产物 |
+
+**多模块组合**：新增业务模块时，在本项目引用其 Web（HttpApi）项目并调用对应的注册扩展即可，无需改动既有模块。
 
 ## 4. 关键设计约束
 
 ### 4.1 驱动零耦合
-`MetaData.Core` 与 `MetaData.Abstractions` 不引用任何 ADO.NET 驱动 NuGet 包。宿主通过 `AddDatabaseProvider(DatabaseType.MySql, MySqlConnectorFactory.Instance)` 按需注册，未注册时返回中文 400 引导。
+`MetaData.Abstractions`、`Providers`、`Core`、`Web` 均不引用任何 ADO.NET 驱动 NuGet 包。宿主通过 `AddDatabaseProvider(DatabaseType.MySql, MySqlConnectorFactory.Instance)` 按需注册，未注册时返回中文 400 引导。
 
 ### 4.2 一类一文件
 每个 `.cs` 文件只包含一个顶层类型，文件名即类型名（详见 `.trae/rules/csharp-one-type-per-file.md`）。
@@ -116,8 +135,8 @@ HTTP 接口不使用 PUT/DELETE/PATCH，不使用路由参数。GET 仅用于无
 | 场景 | 改动位置 |
 |---|---|
 | 新增数据库支持 | `Providers/Dialects/` + `Providers/SchemaInspection/`，宿主注册驱动 |
-| 新增业务接口 | `Core/Api/` Controller + `Core/Services/` + `Core/Models/` DTO |
-| 新增元数据实体 | `Core/Entities/` + `Core/Data/MetaDataDbContext` |
+| 新增业务接口 | `Web/Controllers/` + `Core/Services/` + `Core/Models/` DTO |
+| 新增元数据实体 | `Core/Entities/` + 在 `ConfigureMetaData` 中补映射 + `IMetaDataDbContext` 补 DbSet |
 | 接入鉴权 | Core 中实现 `ICurrentUser`，替换 `DefaultCurrentUser` 注册 |
 | 替换元数据库 | 宿主 `Program.cs` 改 EF 提供程序（如 `UseNpgsql`） |
 | 前端独立引用 DTO | 抽象层 Enums/Exceptions 可引用；业务 DTO 在 Core 中，按需引用 Core 或抽到共享契约项目 |
@@ -140,16 +159,20 @@ backend/
 │   │   ├── Registries/          # DialectRegistry, DbProviderRegistry, SchemaInspectorRegistry
 │   │   └── SchemaInspection/    # SchemaInspectorBase, 5 读取器, 样本默认实现
 │   ├── MetaData.Core/           # 业务层
-│   │   ├── Api/                 # 4 Controller
-│   │   ├── Data/                # MetaDataDbContext
+│   │   ├── Data/                # IMetaDataDbContext + ConfigureMetaData 扩展
 │   │   ├── Entities/            # 4 EF 实体
 │   │   ├── Models/              # 24 业务 DTO
 │   │   ├── Security/            # DataProtectionSecretProtector
 │   │   ├── Services/            # 9 服务 + IDbConnectionFactory + MetaDataOptions
 │   │   └── MetaDataServiceCollectionExtensions.cs
-│   └── MetaData.Web/            # 启动宿主
+│   ├── MetaData.Web/            # HTTP 接口层（类库）
+│   │   ├── Controllers/         # 4 Controller
+│   │   └── MetaDataWebServiceCollectionExtensions.cs
+│   └── MetaData.Host/           # 启动宿主（唯一启动点）
+│       ├── Data/                # AppDbContext（集成 DbContext）
 │       ├── Program.cs
 │       ├── Properties/
+│       ├── appsettings*.json
 │       └── wwwroot/             # Angular 构建产物
 └── tests/
     └── MetaData.Core.Tests/     # xUnit（46 测试）

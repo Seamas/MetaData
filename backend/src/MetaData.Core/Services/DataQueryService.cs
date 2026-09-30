@@ -20,18 +20,18 @@ public class DataQueryService
 
     private static readonly Regex DateOnlyPattern = new(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
 
-    private readonly IDbContextFactory<MetaDataDbContext> _contextFactory;
+    private readonly IMetaDataDbContext _dbContext;
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly IDialectRegistry _dialects;
     private readonly ICurrentUser _currentUser;
 
     public DataQueryService(
-        IDbContextFactory<MetaDataDbContext> contextFactory,
+        IMetaDataDbContext dbContext,
         IDbConnectionFactory connectionFactory,
         IDialectRegistry dialects,
         ICurrentUser currentUser)
     {
-        _contextFactory = contextFactory;
+        _dbContext = dbContext;
         _connectionFactory = connectionFactory;
         _dialects = dialects;
         _currentUser = currentUser;
@@ -39,8 +39,7 @@ public class DataQueryService
 
     public async Task<List<PublishedTableDto>> GetPublishedTablesAsync(CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.Tables.AsNoTracking()
+        return await _dbContext.Tables.AsNoTracking()
             .Where(t => t.IsPublished && t.Connection!.IsEnabled)
             .OrderBy(t => t.Connection!.Name).ThenBy(t => t.DisplayName).ThenBy(t => t.TableName)
             .Select(t => new PublishedTableDto
@@ -65,9 +64,8 @@ public class DataQueryService
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = request.PageSize is < 1 or > MaxPageSize ? 20 : request.PageSize;
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var table = await context.Tables.AsNoTracking()
+        var table = await _dbContext.Tables.AsNoTracking()
             .Include(t => t.Connection)
             .FirstOrDefaultAsync(t => t.Id == request.TableId, cancellationToken)
             ?? throw new MetaDataException($"表不存在：{request.TableId}");
@@ -82,7 +80,7 @@ public class DataQueryService
             throw new MetaDataException("该表所属连接已停用。");
         }
 
-        var fields = await context.Fields.AsNoTracking()
+        var fields = await _dbContext.Fields.AsNoTracking()
             .Where(f => f.TableId == table.Id)
             .OrderBy(f => f.Ordinal)
             .ToListAsync(cancellationToken);
@@ -95,7 +93,7 @@ public class DataQueryService
         var fieldByName = fields.ToDictionary(f => f.FieldName, StringComparer.OrdinalIgnoreCase);
 
         // 用户偏好合并：覆盖顺序与显隐
-        var preferences = (await context.UserFieldPreferences.AsNoTracking()
+        var preferences = (await _dbContext.UserFieldPreferences.AsNoTracking()
                 .Where(p => p.UserId == _currentUser.UserId && p.TableId == table.Id)
                 .ToListAsync(cancellationToken))
             .ToDictionary(p => p.FieldId);
