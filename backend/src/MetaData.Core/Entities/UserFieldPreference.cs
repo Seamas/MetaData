@@ -1,10 +1,10 @@
+using MyWebProject.Shared.Entities;
+
 namespace MetaData.Core.Entities;
 
 /// <summary>用户级字段个性化配置（列顺序、显隐、宽度），仅对该用户生效。</summary>
-public class UserFieldPreference
+public class UserFieldPreference : BaseEntity<long>
 {
-    public long Id { get; set; }
-
     public string UserId { get; set; } = string.Empty;
 
     public long TableId { get; set; }
@@ -16,6 +16,4 @@ public class UserFieldPreference
     public bool IsVisible { get; set; } = true;
 
     public int? Width { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
 }

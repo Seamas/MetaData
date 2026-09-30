@@ -1,5 +1,5 @@
-using MetaData.Core.Models;
-using MetaData.Core.Services;
+using MetaData.Application.Models;
+using MetaData.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MetaData.Web.Controllers;

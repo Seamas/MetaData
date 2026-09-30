@@ -3,6 +3,8 @@
     <Project Path="src/MetaData.Abstractions/MetaData.Abstractions.csproj" />
     <Project Path="src/MetaData.Providers/MetaData.Providers.csproj" />
     <Project Path="src/MetaData.Core/MetaData.Core.csproj" />
+    <Project Path="src/MetaData.Application/MetaData.Application.csproj" />
+    <Project Path="src/MetaData.Infrastructure/MetaData.Infrastructure.csproj" />
     <Project Path="src/MetaData.Web/MetaData.Web.csproj" />
     <Project Path="src/MetaData.Host/MetaData.Host.csproj" />
   </Folder>

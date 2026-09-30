@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -20,7 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MetaData.Core\MetaData.Core.csproj" />
+    <ProjectReference Include="..\..\src\MetaData.Abstractions\MetaData.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\MetaData.Providers\MetaData.Providers.csproj" />
   </ItemGroup>
 
 </Project>

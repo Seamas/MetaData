@@ -1,12 +1,11 @@
 using MetaData.Abstractions.Enums;
+using MyWebProject.Shared.Entities;
 
 namespace MetaData.Core.Entities;
 
 /// <summary>业务表字段元数据。</summary>
-public class FieldMetadata
+public class FieldMetadata : BaseEntity<long>
 {
-    public long Id { get; set; }
-
     public long TableId { get; set; }
 
     /// <summary>物理字段名。</summary>
@@ -41,10 +40,6 @@ public class FieldMetadata
     public bool IsPrimaryKey { get; set; }
 
     public string? Remark { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
 
     public TableMetadata? Table { get; set; }
 }

@@ -1,10 +1,10 @@
+using MyWebProject.Shared.Entities;
+
 namespace MetaData.Core.Entities;
 
 /// <summary>业务表元数据。</summary>
-public class TableMetadata
+public class TableMetadata : BaseEntity<long>
 {
-    public long Id { get; set; }
-
     public long ConnectionId { get; set; }
 
     /// <summary>Schema/Owner/模式名，可空（如 MySQL 库内表无独立 schema）。</summary>
@@ -23,10 +23,6 @@ public class TableMetadata
     public string? DefaultSortField { get; set; }
 
     public string? Remark { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
 
     public DbConnectionInfo? Connection { get; set; }
 

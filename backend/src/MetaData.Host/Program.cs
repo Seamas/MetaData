@@ -1,12 +1,13 @@
 using System.Text.Json;
 using MetaData.Abstractions.Exceptions;
-using MetaData.Core;
+using MetaData.Application;
 using MetaData.Host.Data;
+using MetaData.Infrastructure;
 using MetaData.Web;
 using Microsoft.EntityFrameworkCore;
 
-// MetaData.Host：启动宿主，负责组合业务模块（MetaData.Core + MetaData.Web）。
-// 模块化场景下可在此引用多个业务模块的 Core/Web 统一装配，宿主本身不含业务逻辑。
+// MetaData.Host：启动宿主，负责组合业务模块（Application + Infrastructure + Web）。
+// 模块化场景下可在此引用多个业务模块的 Application/Infrastructure/Web 统一装配，宿主本身不含业务逻辑。
 var builder = WebApplication.CreateBuilder(args);
 
 // 1) 集成 DbContext：多模块共享，连接串与提供程序由宿主决定（示例 SQLite 零配置启动）。
@@ -15,8 +16,9 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite("Data S
 builder.Services.AddScoped<MetaData.Core.Data.IMetaDataDbContext>(sp =>
     sp.GetRequiredService<AppDbContext>());
 
-// 2) MetaData 模块：业务服务 + HTTP 接口。
-builder.Services.AddMetaDataCore();
+// 2) MetaData 模块：基础设施（仓储/方言/安全）+ 业务服务 + HTTP 接口。
+builder.Services.AddMetaDataInfrastructure();
+builder.Services.AddMetaDataApplication();
 builder.Services.AddMetaDataWeb();
 
 // 3) 业务库 ADO.NET 驱动按需注册（核心模块不引用任何驱动包）。

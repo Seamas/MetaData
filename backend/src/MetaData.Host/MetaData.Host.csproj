@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MetaData.Application\MetaData.Application.csproj" />
+    <ProjectReference Include="..\MetaData.Infrastructure\MetaData.Infrastructure.csproj" />
     <ProjectReference Include="..\MetaData.Web\MetaData.Web.csproj" />
   </ItemGroup>
 

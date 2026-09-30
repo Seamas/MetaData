@@ -72,7 +72,7 @@ export class DataQueryComponent implements OnInit {
   filters: FilterRow[] = [];
   rows: Record<string, unknown>[] = [];
   total = 0;
-  page = 1;
+  pageIndex = 1;
   pageSize = 20;
   loading = false;
 
@@ -102,7 +102,7 @@ export class DataQueryComponent implements OnInit {
     this.filters = [];
     this.rows = [];
     this.total = 0;
-    this.page = 1;
+    this.pageIndex = 1;
     this.sortKey = null;
     this.sortDir = null;
     if (!this.selectedTableId) return;
@@ -214,7 +214,7 @@ export class DataQueryComponent implements OnInit {
 
   resetFilters(): void {
     this.filters = [];
-    this.page = 1;
+    this.pageIndex = 1;
     this.query();
   }
 
@@ -255,7 +255,7 @@ export class DataQueryComponent implements OnInit {
 
     const req: DataQueryRequest = {
       tableId: this.selectedTableId,
-      page: this.page,
+      pageIndex: this.pageIndex,
       pageSize: this.pageSize,
       filters,
       sorts: this.sortKey && this.sortDir
@@ -268,21 +268,21 @@ export class DataQueryComponent implements OnInit {
       .post<DataQueryResponse>('/api/data/query', req)
       .subscribe({
         next: (res) => {
-          this.rows = res.rows;
-          this.total = res.total;
+          this.rows = res.items;
+          this.total = res.totalCount;
         },
         complete: () => (this.loading = false)
       });
   }
 
   onPageChange(page: number): void {
-    this.page = page;
+    this.pageIndex = page;
     this.query();
   }
 
   onPageSizeChange(size: number): void {
     this.pageSize = size;
-    this.page = 1;
+    this.pageIndex = 1;
     this.query();
   }
 
@@ -290,7 +290,7 @@ export class DataQueryComponent implements OnInit {
     const entry = sort.find((s) => s.value != null);
     this.sortKey = entry ? entry.key : null;
     this.sortDir = entry ? entry.value : null;
-    this.page = 1;
+    this.pageIndex = 1;
     this.query();
   }
 

@@ -1,12 +1,11 @@
 using MetaData.Abstractions.Enums;
+using MyWebProject.Shared.Entities;
 
 namespace MetaData.Core.Entities;
 
 /// <summary>数据库连接元数据。连接串不直接落库，由方言按结构化字段实时拼装；密码/高级串密文存储。</summary>
-public class DbConnectionInfo
+public class DbConnectionInfo : BaseEntity<long>
 {
-    public long Id { get; set; }
-
     /// <summary>连接名称。</summary>
     public string Name { get; set; } = string.Empty;
 
@@ -60,10 +59,6 @@ public class DbConnectionInfo
     public bool IsEnabled { get; set; } = true;
 
     public string? Remark { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
 
     public ICollection<TableMetadata> Tables { get; set; } = new List<TableMetadata>();
 }

@@ -75,7 +75,7 @@
         @if (filters.length > 0) {
           <button nz-button (click)="resetFilters()">重置</button>
         }
-        <button nz-button nzType="primary" (click)="page = 1; query()">
+        <button nz-button nzType="primary" (click)="pageIndex = 1; query()">
           <span nz-icon nzType="search"></span>查询
         </button>
       </div>
@@ -86,7 +86,7 @@
       [nzData]="rows"
       [nzLoading]="loading"
       [nzFrontPagination]="false"
-      [nzPageIndex]="page"
+      [nzPageIndex]="pageIndex"
       [nzPageSize]="pageSize"
       [nzTotal]="total"
       [nzShowTotal]="totalTpl"

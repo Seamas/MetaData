@@ -167,7 +167,7 @@ export interface SortDto {
 
 export interface DataQueryRequest {
   tableId: number;
-  page: number;
+  pageIndex: number;
   pageSize: number;
   filters: FilterDto[];
   sorts: SortDto[];
@@ -184,10 +184,11 @@ export interface ColumnDto {
 
 export interface DataQueryResponse {
   columns: ColumnDto[];
-  rows: Record<string, unknown>[];
-  total: number;
-  page: number;
+  items: Record<string, unknown>[];
+  totalCount: number;
+  pageIndex: number;
   pageSize: number;
+  totalPages: number;
 }
 
 export interface FieldPreferenceDto {
