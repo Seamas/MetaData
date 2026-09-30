@@ -23,45 +23,44 @@ public class MetadataController : ControllerBase
     }
 
     /// <summary>实时读取业务库中的表清单（用于元数据生成前选择）。</summary>
-    [HttpGet("source-tables")]
-    public async Task<ActionResult<List<SourceTableDto>>> GetSourceTables(
-        [FromQuery] long connectionId, [FromQuery] string? schema, CancellationToken cancellationToken)
-        => await _connectionService.GetSourceTablesAsync(connectionId, schema, cancellationToken);
+    [HttpPost("source-tables")]
+    public async Task<List<SourceTableDto>> SourceTables(SourceTablesRequest request, CancellationToken cancellationToken)
+        => await _connectionService.GetSourceTablesAsync(request.ConnectionId, request.Schema, cancellationToken);
 
     [HttpPost("import")]
-    public async Task<ActionResult<MetadataImportResultDto>> Import([FromBody] MetadataImportRequest request, CancellationToken cancellationToken)
+    public async Task<MetadataImportResultDto> Import(MetadataImportRequest request, CancellationToken cancellationToken)
         => await _importService.ImportAsync(request, cancellationToken);
 
-    [HttpGet("tables")]
-    public async Task<ActionResult<List<TableDto>>> GetTables([FromQuery] long connectionId, CancellationToken cancellationToken)
-        => await _metadataService.GetTablesAsync(connectionId, cancellationToken);
+    [HttpPost("tables")]
+    public async Task<List<TableDto>> GetTables(ConnectionIdRequest request, CancellationToken cancellationToken)
+        => await _metadataService.GetTablesAsync(request.ConnectionId, cancellationToken);
 
-    [HttpGet("fields")]
-    public async Task<ActionResult<List<FieldDto>>> GetFields([FromQuery] long tableId, CancellationToken cancellationToken)
-        => await _metadataService.GetFieldsAsync(tableId, cancellationToken);
+    [HttpPost("fields")]
+    public async Task<List<FieldDto>> GetFields(TableIdRequest request, CancellationToken cancellationToken)
+        => await _metadataService.GetFieldsAsync(request.TableId, cancellationToken);
 
     [HttpPost("save-table")]
-    public async Task<ActionResult<long>> SaveTable([FromBody] TableDto dto, CancellationToken cancellationToken)
+    public async Task<long> SaveTable(TableDto dto, CancellationToken cancellationToken)
         => await _metadataService.SaveTableAsync(dto, cancellationToken);
 
     [HttpPost("save-fields")]
-    public async Task<IActionResult> SaveFields([FromBody] SaveFieldsRequest request, CancellationToken cancellationToken)
+    public async Task<bool> SaveFields(SaveFieldsRequest request, CancellationToken cancellationToken)
     {
         await _metadataService.SaveFieldsAsync(request, cancellationToken);
-        return Ok();
+        return true;
     }
 
     [HttpPost("publish")]
-    public async Task<IActionResult> Publish([FromBody] PublishTableRequest request, CancellationToken cancellationToken)
+    public async Task<bool> Publish(PublishTableRequest request, CancellationToken cancellationToken)
     {
         await _metadataService.PublishAsync(request, cancellationToken);
-        return Ok();
+        return true;
     }
 
     [HttpPost("delete-table")]
-    public async Task<IActionResult> DeleteTable([FromBody] IdRequest request, CancellationToken cancellationToken)
+    public async Task<bool> DeleteTable(IdRequest request, CancellationToken cancellationToken)
     {
         await _metadataService.DeleteTableAsync(request.Id, cancellationToken);
-        return Ok();
+        return true;
     }
 }

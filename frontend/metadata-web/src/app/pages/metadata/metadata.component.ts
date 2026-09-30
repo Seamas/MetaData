@@ -89,7 +89,7 @@ export class MetadataComponent implements OnInit {
     if (!this.selectedConnectionId) return;
     this.tablesLoading = true;
     this.api
-      .get<TableDto[]>('/api/metadata/tables', { connectionId: this.selectedConnectionId })
+      .post<TableDto[]>('/api/metadata/tables', { connectionId: this.selectedConnectionId })
       .subscribe({
         next: (list) => {
           this.tables = list;
@@ -113,7 +113,7 @@ export class MetadataComponent implements OnInit {
     this.fieldsLoading = true;
     this.fields = [];
     this.api
-      .get<FieldDto[]>('/api/metadata/fields', { tableId: table.id })
+      .post<FieldDto[]>('/api/metadata/fields', { tableId: table.id })
       .subscribe({
         next: (list) => (this.fields = [...list].sort((a, b) => a.ordinal - b.ordinal)),
         complete: () => (this.fieldsLoading = false)

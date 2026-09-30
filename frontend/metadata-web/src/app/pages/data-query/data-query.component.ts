@@ -109,12 +109,12 @@ export class DataQueryComponent implements OnInit {
 
     this.loading = true;
     this.api
-      .get<FieldDto[]>('/api/metadata/fields', { tableId: this.selectedTableId })
+      .post<FieldDto[]>('/api/metadata/fields', { tableId: this.selectedTableId })
       .subscribe({
         next: (fields) => {
           this.fields = fields;
           this.api
-            .get<FieldPreferenceDto[]>('/api/data/preferences', { tableId: this.selectedTableId })
+            .post<FieldPreferenceDto[]>('/api/data/preferences', { tableId: this.selectedTableId })
             .subscribe({
               next: (prefs) => {
                 this.preferences = prefs;

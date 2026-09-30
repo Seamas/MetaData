@@ -16,21 +16,21 @@ public class ConnectionsController : ControllerBase
     }
 
     [HttpGet("list")]
-    public async Task<ActionResult<List<ConnectionDto>>> GetList(CancellationToken cancellationToken)
+    public async Task<List<ConnectionDto>> GetList(CancellationToken cancellationToken)
         => await _service.GetListAsync(cancellationToken);
 
     [HttpPost("save")]
-    public async Task<ActionResult<long>> Save([FromBody] ConnectionDto dto, CancellationToken cancellationToken)
+    public async Task<long> Save(ConnectionDto dto, CancellationToken cancellationToken)
         => await _service.SaveAsync(dto, cancellationToken);
 
     [HttpPost("delete")]
-    public async Task<IActionResult> Delete([FromBody] IdRequest request, CancellationToken cancellationToken)
+    public async Task<bool> Delete(IdRequest request, CancellationToken cancellationToken)
     {
         await _service.DeleteAsync(request.Id, cancellationToken);
-        return Ok();
+        return true;
     }
 
     [HttpPost("test")]
-    public async Task<ActionResult<ConnectionTestResultDto>> Test([FromBody] ConnectionDto dto, CancellationToken cancellationToken)
+    public async Task<ConnectionTestResultDto> Test(ConnectionDto dto, CancellationToken cancellationToken)
         => await _service.TestAsync(dto, cancellationToken);
 }

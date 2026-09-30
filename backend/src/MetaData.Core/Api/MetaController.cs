@@ -10,5 +10,5 @@ namespace MetaData.Core.Api;
 public class MetaController : ControllerBase
 {
     [HttpGet("operators")]
-    public ActionResult<List<CategoryOperators>> GetOperators() => QueryOperatorMap.BuildDescriptorList();
+    public List<CategoryOperators> GetOperators() => QueryOperatorMap.BuildDescriptorList();
 }

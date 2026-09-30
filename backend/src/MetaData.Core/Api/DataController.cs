@@ -19,21 +19,21 @@ public class DataController : ControllerBase
     }
 
     [HttpGet("published-tables")]
-    public async Task<ActionResult<List<PublishedTableDto>>> GetPublishedTables(CancellationToken cancellationToken)
+    public async Task<List<PublishedTableDto>> GetPublishedTables(CancellationToken cancellationToken)
         => await _queryService.GetPublishedTablesAsync(cancellationToken);
 
     [HttpPost("query")]
-    public async Task<ActionResult<DataQueryResponse>> Query([FromBody] DataQueryRequest request, CancellationToken cancellationToken)
+    public async Task<DataQueryResponse> Query(DataQueryRequest request, CancellationToken cancellationToken)
         => await _queryService.QueryAsync(request, cancellationToken);
 
-    [HttpGet("preferences")]
-    public async Task<ActionResult<List<FieldPreferenceDto>>> GetPreferences([FromQuery] long tableId, CancellationToken cancellationToken)
-        => await _preferenceService.GetAsync(tableId, cancellationToken);
+    [HttpPost("preferences")]
+    public async Task<List<FieldPreferenceDto>> GetPreferences(TableIdRequest request, CancellationToken cancellationToken)
+        => await _preferenceService.GetAsync(request.TableId, cancellationToken);
 
     [HttpPost("preferences/save")]
-    public async Task<IActionResult> SavePreferences([FromBody] SavePreferencesRequest request, CancellationToken cancellationToken)
+    public async Task<bool> SavePreferences(SavePreferencesRequest request, CancellationToken cancellationToken)
     {
         await _preferenceService.SaveAsync(request, cancellationToken);
-        return Ok();
+        return true;
     }
 }

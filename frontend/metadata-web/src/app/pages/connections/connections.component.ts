@@ -229,7 +229,7 @@ export class ConnectionsComponent implements OnInit {
     this.sourceTables = [];
     this.checkedTables.clear();
     this.api
-      .get<SourceTableDto[]>('/api/metadata/source-tables', {
+      .post<SourceTableDto[]>('/api/metadata/source-tables', {
         connectionId: this.drawerConnection.id,
         schema: this.schemaFilter
       })

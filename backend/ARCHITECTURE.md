@@ -79,7 +79,7 @@
 |---|---|
 | `MetaData.Core.Entities` | `DbConnectionInfo`、`TableMetadata`、`FieldMetadata`、`UserFieldPreference`（EF 实体） |
 | `MetaData.Core.Data` | `MetaDataDbContext`（EF Core，表名 `md_connection` 等，用 `IDbContextFactory`） |
-| `MetaData.Core.Models` | 业务 DTO：`ConnectionDto`、`TableDto`、`FieldDto`、`DataQueryRequest`/`Response`、`FieldPreferenceDto` 等 21 个 |
+| `MetaData.Core.Models` | 业务 DTO：`ConnectionDto`、`TableDto`、`FieldDto`、`DataQueryRequest`/`Response`、`FieldPreferenceDto` 等 24 个 |
 | `MetaData.Core.Services` | `ConnectionService`、`MetadataService`、`MetadataImportService`、`DataQueryService`、`UserPreferenceService`、`DbConnectionFactory`、`DefaultCurrentUser`、`MetaDataOptions`、`QueryOperatorMap` |
 | `MetaData.Core.Api` | `ConnectionsController`、`MetadataController`、`DataController`、`MetaController`（仅 GET/POST） |
 | `MetaData.Core.Security` | `DataProtectionSecretProtector` |
@@ -102,8 +102,8 @@
 ### 4.2 一类一文件
 每个 `.cs` 文件只包含一个顶层类型，文件名即类型名（详见 `.trae/rules/csharp-one-type-per-file.md`）。
 
-### 4.3 仅 GET/POST
-HTTP 接口不使用 PUT/DELETE/PATCH，不使用路由参数，降低代理与防火墙适配成本。
+### 4.3 仅 GET/POST，参数统一 POST + JSON
+HTTP 接口不使用 PUT/DELETE/PATCH，不使用路由参数。GET 仅用于无参查询（如 `list`、`operators`、`published-tables`）；凡需要传参的请求统一使用 POST + JSON body，不使用 query string（文件上传等 multipart 场景除外）。
 
 ### 4.4 暂不鉴权
 `ICurrentUser` 在 Abstractions 中定义，`DefaultCurrentUser` 在 Core 中读 `MetaData:DefaultUserId`（默认 `default`）。用户偏好按 UserId 隔离。
@@ -143,7 +143,7 @@ backend/
 │   │   ├── Api/                 # 4 Controller
 │   │   ├── Data/                # MetaDataDbContext
 │   │   ├── Entities/            # 4 EF 实体
-│   │   ├── Models/              # 21 业务 DTO
+│   │   ├── Models/              # 24 业务 DTO
 │   │   ├── Security/            # DataProtectionSecretProtector
 │   │   ├── Services/            # 9 服务 + IDbConnectionFactory + MetaDataOptions
 │   │   └── MetaDataServiceCollectionExtensions.cs
