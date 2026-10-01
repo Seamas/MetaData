@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\MyWebTemplate\MyWebProject.Shared\MyWebProject.Shared.csproj" />
+    <PackageReference Include="Wang.Seamas.Shared" Version="1.0.1" />
   </ItemGroup>
 
 </Project>

@@ -2,8 +2,8 @@ using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
 using MetaData.Core.Data;
 using Microsoft.EntityFrameworkCore;
-using MyWebProject.Shared.DTOs;
-using MyWebProject.Shared.Repositories;
+using Wang.Seamas.Shared.DTOs;
+using Wang.Seamas.Shared.Repositories;
 
 namespace MetaData.Infrastructure.Repositories;
 
@@ -38,7 +38,7 @@ internal abstract class MetaDataRepositoryBase<T, TKey>(IMetaDataDbContext dbCon
     public Task<long> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         => DbSet.LongCountAsync(predicate, cancellationToken);
 
-    public async Task<MyWebProject.Shared.DTOs.PagedResult<T>> GetPagedListAsync(
+    public async Task<Wang.Seamas.Shared.DTOs.PagedResult<T>> GetPagedListAsync(
         Expression<Func<T, bool>>? predicate,
         PagedQuery? pagedQuery,
         CancellationToken cancellationToken = default)
@@ -63,7 +63,7 @@ internal abstract class MetaDataRepositoryBase<T, TKey>(IMetaDataDbContext dbCon
             .Take(pagedQuery.PageSize)
             .ToListAsync(cancellationToken);
 
-        return new MyWebProject.Shared.DTOs.PagedResult<T>(items, total, pagedQuery.PageIndex, pagedQuery.PageSize);
+        return new Wang.Seamas.Shared.DTOs.PagedResult<T>(items, total, pagedQuery.PageIndex, pagedQuery.PageSize);
     }
 
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)

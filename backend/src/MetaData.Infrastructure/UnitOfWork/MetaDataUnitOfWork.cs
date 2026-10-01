@@ -1,5 +1,5 @@
 using MetaData.Core.Data;
-using MyWebProject.Shared.UnitOfWork;
+using Wang.Seamas.Shared.UnitOfWork;
 
 namespace MetaData.Infrastructure.UnitOfWork;
 

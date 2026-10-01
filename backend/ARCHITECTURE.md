@@ -5,7 +5,7 @@
 ## 1. 设计目标
 
 - **模块化**：抽象契约、数据库方言实现、领域、应用用例、基础设施、HTTP 接口、启动宿主七层分离，各自独立编译为 DLL，可单独复用；宿主可组合多个业务模块统一启动。
-- **基座共享**：跨模块通用抽象（实体基类、泛型仓储、工作单元、分页契约、业务异常、事务特性）下沉在基座 `MyWebProject.Shared`，本模块通过跨目录项目引用原地复用，将来发布 NuGet 包。
+- **基座共享**：跨模块通用抽象（实体基类、泛型仓储、工作单元、分页契约、业务异常、事务特性、用户上下文）由公共 NuGet 包 `Wang.Seamas.Shared` 提供，本模块以 PackageReference 方式引用，与基座应用解耦。
 - **依赖单向**：`Abstractions ← Providers ← Core ← Application ← Web ← Host`；`Infrastructure → Core/Abstractions/Providers` 提供实现，由 Host 装配。严禁逆向或循环引用。
 - **零驱动耦合**：抽象层、领域层、应用层不引用任何具体数据库驱动（MySqlConnector / Npgsql / …），驱动由宿主按需注册。
 - **命名空间规范**：`项目名称.文件夹`，如 `MetaData.Abstractions.Enums`、`MetaData.Core.Repositories`。
@@ -41,7 +41,7 @@
 └──────────────────────┘     └─────────┬──────────────┘
                                        │ 引用
                           ┌────────────▼──────────────┐
-                          │ MyWebProject.Shared（基座）│
+                          │ Wang.Seamas.Shared (NuGet) │
                           │ BaseEntity/仓储/UoW/分页/  │
                           │ BizException/Transactional│
                           └───────────────────────────┘
@@ -51,41 +51,41 @@
 
 | 模块 | 引用 | 被引用 |
 |---|---|---|
-| `MyWebProject.Shared`（基座，跨解决方案） | 无（零依赖） | Abstractions、Core（传递）、Application、Infrastructure、Host |
-| `MetaData.Abstractions` | Shared | Providers, Core |
+| `Wang.Seamas.Shared`（公共 NuGet 包，v1.0.1） | 无（零依赖） | Abstractions 直接引用，其余层经传递引用获得 |
+| `MetaData.Abstractions` | Wang.Seamas.Shared (NuGet) | Providers, Core |
 | `MetaData.Providers` | Abstractions | Infrastructure |
-| `MetaData.Core` | Abstractions + Shared + EFCore.Relational | Application, Infrastructure |
-| `MetaData.Application` | Core + Abstractions + Shared（不引用 Providers/Infrastructure） | Web, Host |
+| `MetaData.Core` | Abstractions + NuGet 包（传递）+ EFCore.Relational | Application, Infrastructure |
+| `MetaData.Application` | Core + Abstractions（不引用 Providers/Infrastructure） | Web, Host |
 | `MetaData.Infrastructure` | Core + Abstractions + Providers + AspNetCore.Framework（实现层） | Host |
 | `MetaData.Web` | Application（类库，含 HTTP 接口） | Host |
 | `MetaData.Host` | Web + Application + Infrastructure + Sqlite（SDK.Web，唯一启动点） | — |
 
-> Application 面向 Core/Abstractions 的接口编程，并使用基座 `CurrentUserContext` 读取当前用户（不感知具体鉴权方式）；Infrastructure 只提供仓储/方言/数据保护实现；5 种方言/读取器与驱动的具体 `new` 装配只发生在 Infrastructure 与 Host。
+> Application 面向 Core/Abstractions 的接口编程，并使用 NuGet 包提供的 `CurrentUserContext` 读取当前用户（不感知具体鉴权方式）；Infrastructure 只提供仓储/方言/数据保护实现；5 种方言/读取器与驱动的具体 `new` 装配只发生在 Infrastructure 与 Host。
 
 ## 3. 各模块职责
 
-### 3.1 MyWebProject.Shared — 基座公共模块（跨解决方案引用）
+### 3.1 Wang.Seamas.Shared — 公共 NuGet 包
 
-> 位于 `../../MyWebTemplate/MyWebProject.Shared`，**零依赖**。本模块通过相对路径 `ProjectReference` 原地引用。
+> 由基座应用的公共代码发布的 **零依赖** NuGet 包（当前 1.0.1），包名与命名空间一致，均为 `Wang.Seamas.Shared`。仅 `MetaData.Abstractions` 直接 `<PackageReference>`，其余层经项目引用传递获得。
 
 | 命名空间 | 内容 |
 |---|---|
-| `MyWebProject.Shared.Entities` | `BaseEntity`（`CreateAt`/`UpdateAt` 可空时间戳）、`BaseEntity<TKey>`（`TKey Id`） |
-| `MyWebProject.Shared.Repositories` | `IQueryRepository<T>`（读模型）、`IRepository<T,TKey>`（增删改） |
-| `MyWebProject.Shared.UnitOfWork` | `IUnitOfWork`（`SaveChangesAsync` + 事务三件套） |
-| `MyWebProject.Shared.DTOs` | `PagedQuery`（PageIndex/PageSize/SkipCount/SortField/IsAscending）、`PagedResult<T>`（Items/TotalCount/PageIndex/PageSize/TotalPages）、`ApiResult` |
-| `MyWebProject.Shared.Exceptions` | `BizException`（业务异常基类，默认 code=400） |
-| `MyWebProject.Shared.Attributes` | `TransactionalAttribute`（基座 Autofac AOP 使用；本模块暂以显式 `IUnitOfWork.SaveChangesAsync` 保持等价） |
+| `Wang.Seamas.Shared.Entities` | `BaseEntity`（`CreateAt`/`UpdateAt` 可空时间戳）、`BaseEntity<TKey>`（`TKey Id`） |
+| `Wang.Seamas.Shared.Repositories` | `IQueryRepository<T>`（读模型）、`IRepository<T,TKey>`（增删改） |
+| `Wang.Seamas.Shared.UnitOfWork` | `IUnitOfWork`（`SaveChangesAsync` + 事务三件套） |
+| `Wang.Seamas.Shared.DTOs` | `PagedQuery`（PageIndex/PageSize/SkipCount/SortField/IsAscending）、`PagedResult<T>`（Items/TotalCount/PageIndex/PageSize/TotalPages）、`ApiResult` |
+| `Wang.Seamas.Shared.Exceptions` | `BizException`（业务异常基类，默认 code=400） |
+| `Wang.Seamas.Shared.Attributes` | `TransactionalAttribute`（基座 Autofac AOP 使用；本模块暂以显式 `IUnitOfWork.SaveChangesAsync` 保持等价） |
 
-基座侧另有 `MyWebProject.Core.Entities.Common.AuditedEntity : BaseEntity<int>`（补 `CreateBy`/`UpdateBy` 审计人），仅基座实体使用；MetaData 实体不带审计人。
+基座应用（同样消费此 NuGet 包）在自身 Core 中定义 `AuditedEntity : BaseEntity<int>`（补 `CreateBy`/`UpdateBy` 审计人），仅基座实体使用；MetaData 实体不带审计人。
 
 ### 3.2 MetaData.Abstractions — 抽象契约层
 
-> 依赖 Shared。定义跨模块共享的接口、枚举、异常与 Schema 契约。可独立打包为 NuGet 供其他项目引用。
+> 依赖 `Wang.Seamas.Shared` NuGet 包。定义跨模块共享的接口、枚举、异常与 Schema 契约。可独立打包为 NuGet 供其他项目引用。
 
 | 命名空间 | 内容 |
 |---|---|
-| `MetaData.Abstractions` | `IDatabaseDialect`、`IDbProviderRegistry`、`IDialectRegistry`、`ISchemaInspectorRegistry`、`ICurrentUser`（UserId 为 string）、`ISecretProtector`、`DatabaseProviderRegistration`、`ConnectionSettings`、`DbVersionInfo`、`QueryParts`、`FilterCondition`、`SortItem`、`BuiltSql` |
+| `MetaData.Abstractions` | `IDatabaseDialect`、`IDbProviderRegistry`、`IDialectRegistry`、`ISchemaInspectorRegistry`、`ISecretProtector`、`DatabaseProviderRegistration`、`ConnectionSettings`、`DbVersionInfo`、`QueryParts`、`FilterCondition`、`SortItem`、`BuiltSql`（当前用户不在此定义，统一使用 NuGet 包的 `CurrentUserContext`） |
 | `MetaData.Abstractions.Enums` | `DatabaseType`、`ConnectionInputMode`、`AuthMode`、`OracleTargetType`、`DataCategory`、`FilterOperator`、`SortDirection` |
 | `MetaData.Abstractions.Exceptions` | `MetaDataException : BizException`、`DriverNotRegisteredException : MetaDataException` |
 | `MetaData.Abstractions.Schema` | `ISchemaInspector`、`ITableSchemaSample`、`IColumnSchemaSample` |
@@ -127,7 +127,7 @@
 | `MetaData.Application/Models` | 24 个业务 DTO。`DataQueryRequest : PagedQuery`（pageIndex/pageSize），`DataQueryResponse : PagedResult<Dictionary<string,object?>>`（items/totalCount/pageIndex/pageSize/totalPages + columns） |
 | `MetaData.Application` | `ApplicationServiceCollectionExtensions.AddMetaDataApplication`（5 服务按接口→实现 scoped 注册） |
 
-> 用户身份：服务通过基座 `MyWebProject.Shared.CurrentUserContext`（`AsyncLocal<int?>`）读取当前用户，不依赖具体鉴权实现。未接入鉴权时回落 `"default"`。
+> 用户身份：服务通过 NuGet 包提供的 `Wang.Seamas.Shared.CurrentUserContext`（`AsyncLocal<int?>`）读取当前用户，不依赖具体鉴权实现。未接入鉴权时回落 `"default"`。
 
 **持久化模式**：服务注入仓储 + `IUnitOfWork`，查询走仓储专用方法（no-tracking/tracking 由方法名区分），写操作后显式 `unitOfWork.SaveChangesAsync()`；审计时间戳由宿主 AppDbContext 统一填充，服务不再手动赋值。
 
@@ -181,7 +181,7 @@
 HTTP 接口不使用 PUT/DELETE/PATCH，不使用路由参数。GET 仅用于无参查询（如 `list`、`operators`、`published-tables`）；凡需要传参的请求统一使用 POST + JSON body，不使用 query string（文件上传等 multipart 场景除外）。
 
 ### 4.4 暂不鉴权
-当前用户统一使用基座 `MyWebProject.Shared.CurrentUserContext`（`AsyncLocal<int?>`），由宿主中间件按请求设置。未接入鉴权时 MetaData 服务回落 `"default"`。用户偏好按 UserId（string）隔离。
+当前用户统一使用 NuGet 包 `Wang.Seamas.Shared` 提供的 `Wang.Seamas.Shared.CurrentUserContext`（`AsyncLocal<int?>`），由宿主中间件按请求设置。未接入鉴权时 MetaData 服务回落 `"default"`。用户偏好按 UserId（string）隔离。
 
 ### 4.5 EF 管元数据 / ADO 查业务
 元数据（连接/表/字段/偏好）用 EF Core 经仓储管理；业务库数据查询用 ADO.NET，由方言接口生成方言化 SQL（分页、参数前缀、引用符）。
@@ -198,8 +198,8 @@ HTTP 接口不使用 PUT/DELETE/PATCH，不使用路由参数。GET 仅用于无
 | 新增业务接口 | `Web/Controllers/` + `Application/Interfaces` + `Application/Services` + `Application/Models` DTO |
 | 新增数据访问 | `Core/Repositories` 声明接口方法 → `Infrastructure/Repositories` 实现，服务只依赖接口 |
 | 新增元数据实体 | `Core/Entities/`（继承 `BaseEntity<long>`）+ `Infrastructure/Data/Configurations/` 新增 `IEntityTypeConfiguration` + `IMetaDataDbContext` 补 DbSet + 仓储 |
-| 跨模块通用抽象 | 下沉到基座 `MyWebProject.Shared`（保持足够通用，零业务语义） |
-| 接入鉴权 | 宿主（如基座 `CurrentUserMiddleware`）在请求开始时设置 `CurrentUserContext.UserId`；模块侧无需改动 |
+| 跨模块通用抽象 | 收入公共 NuGet 包 `Wang.Seamas.Shared`（保持足够通用，零业务语义），升版本号后各项目更新引用 |
+| 接入鉴权 | 宿主中间件（如基座的 `CurrentUserMiddleware`）在请求开始时设置 `CurrentUserContext.UserId`；模块侧无需改动 |
 | 替换元数据库 | 宿主 `Program.cs` 改 EF 提供程序（如 `UseNpgsql`） |
 | 前端独立引用 DTO | 抽象层 Enums/Exceptions 可引用；业务 DTO 在 Application 中，按需引用 Application 或抽到共享契约项目 |
 
@@ -210,7 +210,7 @@ backend/
 ├── MetaData.slnx                # .NET 10 解决方案（新格式）
 ├── ARCHITECTURE.md              # 本文档
 ├── src/
-│   ├── MetaData.Abstractions/   # 抽象契约层（引用 Shared）
+│   ├── MetaData.Abstractions/   # 抽象契约层（引用 Wang.Seamas.Shared NuGet 包）
 │   │   ├── Enums/               # 7 枚举
 │   │   ├── Exceptions/          # MetaDataException : BizException, DriverNotRegisteredException
 │   │   ├── Schema/              # ISchemaInspector, ITableSchemaSample, IColumnSchemaSample

@@ -2,7 +2,7 @@ using MetaData.Core.Data;
 using MetaData.Core.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using MyWebProject.Shared.Entities;
+using Wang.Seamas.Shared.Entities;
 
 namespace MetaData.Host.Data;
 

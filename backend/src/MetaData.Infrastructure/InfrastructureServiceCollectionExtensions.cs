@@ -12,7 +12,7 @@ using MetaData.Providers.Registries;
 using MetaData.Providers.SchemaInspection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using MyWebProject.Shared.UnitOfWork;
+using Wang.Seamas.Shared.UnitOfWork;
 
 namespace MetaData.Infrastructure;
 

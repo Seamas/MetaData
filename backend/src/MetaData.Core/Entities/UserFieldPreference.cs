@@ -1,4 +1,4 @@
-using MyWebProject.Shared.Entities;
+using Wang.Seamas.Shared.Entities;
 
 namespace MetaData.Core.Entities;
 

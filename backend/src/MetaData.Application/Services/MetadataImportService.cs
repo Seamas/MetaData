@@ -6,7 +6,7 @@ using MetaData.Application.Models;
 using MetaData.Core.Abstractions.Services;
 using MetaData.Core.Entities;
 using MetaData.Core.Repositories;
-using MyWebProject.Shared.UnitOfWork;
+using Wang.Seamas.Shared.UnitOfWork;
 
 namespace MetaData.Application.Services;
 

@@ -1,5 +1,5 @@
 using MetaData.Core.Entities;
-using MyWebProject.Shared.Repositories;
+using Wang.Seamas.Shared.Repositories;
 
 namespace MetaData.Core.Repositories;
 

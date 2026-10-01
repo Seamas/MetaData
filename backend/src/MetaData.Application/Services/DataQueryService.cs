@@ -10,7 +10,7 @@ using MetaData.Application.Models;
 using MetaData.Core.Abstractions.Services;
 using MetaData.Core.Entities;
 using MetaData.Core.Repositories;
-using MyWebProject.Shared;
+using Wang.Seamas.Shared;
 
 namespace MetaData.Application.Services;
 

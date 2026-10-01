@@ -1,4 +1,4 @@
-using MyWebProject.Shared.Exceptions;
+using Wang.Seamas.Shared.Exceptions;
 
 namespace MetaData.Abstractions.Exceptions;
 

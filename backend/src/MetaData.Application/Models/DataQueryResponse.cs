@@ -1,4 +1,4 @@
-using MyWebProject.Shared.DTOs;
+using Wang.Seamas.Shared.DTOs;
 
 namespace MetaData.Application.Models;
 

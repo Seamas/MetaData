@@ -4,8 +4,8 @@ using MetaData.Application.Interfaces;
 using MetaData.Application.Models;
 using MetaData.Core.Entities;
 using MetaData.Core.Repositories;
-using MyWebProject.Shared;
-using MyWebProject.Shared.UnitOfWork;
+using Wang.Seamas.Shared;
+using Wang.Seamas.Shared.UnitOfWork;
 
 namespace MetaData.Application.Services;
 
