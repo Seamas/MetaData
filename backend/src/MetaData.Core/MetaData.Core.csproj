@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Include="Wang.Seamas.Shared" Version="1.0.1" />
   </ItemGroup>
 
 </Project>

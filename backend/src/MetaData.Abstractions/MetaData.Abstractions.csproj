@@ -6,8 +6,5 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Wang.Seamas.Shared" Version="1.0.1" />
-  </ItemGroup>
 
 </Project>
